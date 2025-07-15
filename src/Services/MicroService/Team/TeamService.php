@@ -14,14 +14,14 @@ class TeamService
             if (!class_exists($teamModel)) {
                 throw new \RuntimeException("Model class [$teamModel] does not exist.");
             }
-            
+
             $teamModel::where('id', $request->team_id)->update([
                 'status' => $request->status,
             ]);
 
             $teamStatusUpdateJob = config('nexzan-shared.jobs.team_status_update');
             if (class_exists($teamStatusUpdateJob)) {
-               dispatch(new $teamStatusUpdateJob($request->team_id));
+                dispatch(new $teamStatusUpdateJob($request->validated()));
             }
 
 
