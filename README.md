@@ -13,22 +13,27 @@ Shared same feature of codes for all Nexzan services
   }
 ]
 ```
+---
 
 ### Step 2: Require the Package via Composer
 
 ```bash
 composer require chonchol-alzaf/nexzan-shared:^1.0.0
 ```
+---
 
 ### Step 3: GitHub Token 
 
 ```bash
 composer config --global github-oauth.github.com YOUR_PERSONAL_ACCESS_TOKEN
 ```
-### Step 4: (Optional) Publish the View File
+### Step 4: Publish the View & Config Files
 ```bash
-php artisan vendor:publish --tag=views
+php artisan vendor:publish --tag=nexzan-shared-views
+php artisan vendor:publish --tag=nexzan-shared-config
 ```
+
+---
 
 ### 📨 Step 5: (Optional) Use Mail Logging Channel
 If you want to send log messages via email (for example: *critical*, *error*, or *warning*), add a custom mail channel in your Laravel logging config.
@@ -48,12 +53,14 @@ If you want to send log messages via email (for example: *critical*, *error*, or
 ```php
 'log_notification_email' => env('LOG_NOTIFICATION_EMAIL', 'dev@nexzan.com'),
 ```
-
+---
 
 ---
 Create token from: https://github.com/settings/tokens  
 ✅ Required scopes: `read:packages`, `repo`
 
+### Important nots
+1. Has api  `v1/internal/team-status`
 ### 📁 Package Structure
 ```
 nexzan-shared/
