@@ -14,7 +14,7 @@ class LogEmailHandler extends AbstractProcessingHandler
         $level = $record['level_name'] ?? 'UNKNOWN';
         $timestamp = $record['datetime']->format('Y-m-d H:i:s');
 
-        Mail::to(config('app.log_notification_email','suppor@nexzan.com'))
+        Mail::to(config('loggin.log_notification_email','suppor@nexzan.com'))
             ->send(new LogAlertMail($message, $level, $timestamp));
     }
 }
