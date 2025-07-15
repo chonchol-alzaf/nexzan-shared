@@ -67,7 +67,7 @@ If you want to send log messages via email (for example: *critical*, *error*, or
 
 <img width="420" height="641" alt="image" src="https://github.com/user-attachments/assets/2fea9664-7c8a-46f1-bf50-54f076b98994" />
 
-
+---
 🔄 Versioning & Git Tagging
 ```bash
 git tag v1.0.0
