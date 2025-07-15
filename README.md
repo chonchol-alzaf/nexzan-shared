@@ -1,5 +1,5 @@
 # 🔐 Nexzan Shared (Private Package)
-Shared same feature of codes for all Nexzan services 
+Reusable components shared across all Nexzan services.
 
 ---
 📦 Installation (Private GitHub Package)
@@ -27,7 +27,11 @@ composer require chonchol-alzaf/nexzan-shared:^1.0.0
 ```bash
 composer config --global github-oauth.github.com YOUR_PERSONAL_ACCESS_TOKEN
 ```
-### Step 4: Publish the View & Config Files
+🔐 Generate token: https://github.com/settings/tokens
+
+✅ Required scopes: `read:packages`, `repo`
+
+### Step 4: Publish Config & View Files
 ```bash
 php artisan vendor:publish --tag=nexzan-shared-views
 php artisan vendor:publish --tag=nexzan-shared-config
@@ -50,40 +54,18 @@ If you want to send log messages via email (for example: *critical*, *error*, or
 ```
 
 ---
-Create token from: https://github.com/settings/tokens  
-✅ Required scopes: `read:packages`, `repo`
 
-### Important nots
-1. Has api  `v1/internal/team-status`
+
+### 📁 Package Highlights
+- 📌 Shared API route: `v1/internal/team-status`
+- 🧩 Common Traits, Enums, Models, Exceptions, and Requests
+- 🧠 Designed for modular Laravel-based microservices..
+
+---
+
 ### 📁 Package Structure
-```
-nexzan-shared/
-├── src/
-│   ├── Broadcasting/
-│   │     └── LogEmailHandler.php
-│   ├── Enums/
-│   │   └── TeamStatusEnum.php
-│   ├── Exceptions/
-│   │   └── CustomException.php
-│   ├── Http/
-│   │   └── Requests/
-│   │       └── BaseFormRequest.php
-│   ├── Mail/
-│   │   └── LogAlertMail.php
-│   └── Models/
-│   │    └── Team.php
-│   │
-│   └── Providers/
-│   │    └── NexzanSharedServiceProvider.php
-│   └──Traits/
-│        └── MicroServiceRequestTrait.php
-├── resources/
-│      └── views/
-│           └──emails/
-│              └── log-alert.blade.php
-├── composer.json
-└── README.md
-```
+
+<img width="420" height="641" alt="image" src="https://github.com/user-attachments/assets/2fea9664-7c8a-46f1-bf50-54f076b98994" />
 
 
 🔄 Versioning & Git Tagging
