@@ -43,11 +43,6 @@ If you want to send log messages via email (for example: *critical*, *error*, or
     'handler' => Nexzan\Shared\Broadcasting\LogEmailHandler::class,
 ],
 ```
-3️⃣ Add a new key before the `channels` array (usually at the top of the file):
-
-```php
-'log_notification_email' => env('LOG_NOTIFICATION_EMAIL', 'dev@nexzan.com'),
-```
 
 
 ---
