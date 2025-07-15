@@ -25,7 +25,7 @@ composer require chonchol-alzaf/nexzan-shared:^1.0.0
 ```bash
 composer config --global github-oauth.github.com YOUR_PERSONAL_ACCESS_TOKEN
 ```
-### Step 4: Copy views
+### Step 4: Publish the View File
 ```bash
 php artisan vendor:publish --tag=views
 ```
