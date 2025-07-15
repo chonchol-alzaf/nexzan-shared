@@ -1,4 +1,7 @@
 # 🔐 Nexzan Shared (Private Package)
+Shared same feature of codes for all Nexzan services 
+
+---
 📦 Installation (Private GitHub Package)
 ### Step 1: Add Private Repository to `composer.json`
 
@@ -17,7 +20,7 @@
 composer require chonchol-alzaf/nexzan-shared:^1.0.0
 ```
 
-### Step 3: GitHub Token (if private)
+### Step 3: GitHub Token 
 
 ```bash
 composer config --global github-oauth.github.com YOUR_PERSONAL_ACCESS_TOKEN
@@ -25,7 +28,8 @@ composer config --global github-oauth.github.com YOUR_PERSONAL_ACCESS_TOKEN
 
 Create token from: https://github.com/settings/tokens  
 ✅ Required scopes: `read:packages`, `repo`
-📁 Package Structure
+
+### 📁 Package Structure
 ```
 nexzan-shared/
 ├── src/
@@ -62,10 +66,11 @@ You may extend the shared package by:
 
 - Adding new Enums  
 - Adding base Traits / Models  
-- Creating shared Exceptions or Requests  
+- Creating shared Exceptions or Requests
+- Create relevant any class
 
 All changes should go through pull requests (PRs).
-🧪 Tested With
+### 🧪 Tested With
 - Laravel 10.x / 11.x  
 - PHP 8.1 / 8.2+  
 - Composer 2.x
