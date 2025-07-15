@@ -25,7 +25,11 @@ composer require chonchol-alzaf/nexzan-shared:^1.0.0
 ```bash
 composer config --global github-oauth.github.com YOUR_PERSONAL_ACCESS_TOKEN
 ```
-
+### Step 4: Copy views
+```bash
+php artisan vendor:publish --tag=views
+```
+---
 Create token from: https://github.com/settings/tokens  
 ✅ Required scopes: `read:packages`, `repo`
 
