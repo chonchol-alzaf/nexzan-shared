@@ -2,7 +2,7 @@
 
 namespace Nexzan\Shared\Broadcasting;
 
-use App\Mail\LogAlertMail;
+use Nexzan\Shared\Mail\LogAlertMail;
 use Illuminate\Support\Facades\Mail;
 use Monolog\Handler\AbstractProcessingHandler;
 
