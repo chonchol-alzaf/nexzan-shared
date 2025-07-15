@@ -11,5 +11,12 @@
     "require": {
         "php": ">=8.1",
         "bensampo/laravel-enum": "^6.7"
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Nexzan\\Shared\\Providers\\NexzanSharedServiceProvider"
+            ]
+        }
     }
 }
