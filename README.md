@@ -25,10 +25,31 @@ composer require chonchol-alzaf/nexzan-shared:^1.0.0
 ```bash
 composer config --global github-oauth.github.com YOUR_PERSONAL_ACCESS_TOKEN
 ```
-### Step 4: Publish the View File
+### Step 4: (Optional) Publish the View File
 ```bash
 php artisan vendor:publish --tag=views
 ```
+
+### 📨 Step 5: (Optional) Use Mail Logging Channel
+If you want to send log messages via email (for example: *critical*, *error*, or *warning*), add a custom mail channel in your Laravel logging config.
+
+1️⃣ Open `config/logging.php`
+
+2️⃣ Add a new channel to the `channels` array:
+```php
+ 'mail' => [
+    'driver' => 'monolog',
+    'level' => 'debug',
+    'handler' => Nexzan\Shared\Broadcasting\LogEmailHandler::class,
+],
+```
+3️⃣ Add a new key before the `channels` array (usually at the top of the file):
+
+```php
+'log_notification_email' => env('LOG_NOTIFICATION_EMAIL', 'dev@nexzan.com'),
+```
+
+
 ---
 Create token from: https://github.com/settings/tokens  
 ✅ Required scopes: `read:packages`, `repo`
@@ -37,6 +58,8 @@ Create token from: https://github.com/settings/tokens
 ```
 nexzan-shared/
 ├── src/
+│   ├── Broadcasting/
+│   │     └── LogEmailHandler.php
 │   ├── Enums/
 │   │   └── TeamStatusEnum.php
 │   ├── Exceptions/
@@ -44,10 +67,19 @@ nexzan-shared/
 │   ├── Http/
 │   │   └── Requests/
 │   │       └── BaseFormRequest.php
+│   ├── Mail/
+│   │   └── LogAlertMail.php
 │   └── Models/
 │   │    └── Team.php
+│   │
+│   └── Providers/
+│   │    └── NexzanSharedServiceProvider.php
 │   └──Traits/
 │        └── MicroServiceRequestTrait.php
+├── resources/
+│      └── views/
+│           └──emails/
+│              └── log-alert.blade.php
 ├── composer.json
 └── README.md
 ```
