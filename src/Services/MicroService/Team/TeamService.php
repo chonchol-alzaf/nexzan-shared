@@ -19,10 +19,16 @@ class TeamService
                 'status' => $request->status,
             ]);
 
-            return ResponseSuccess([], 'Team status updated successfully!');
-        } catch (\Throwable $e) {
+            $teamStatusUpdateJob = config('nexzan-shared.jobs.team_status_update');
+            if (class_exists($teamStatusUpdateJob)) {
+               dispatch(new $teamStatusUpdateJob($request->team_id));
+            }
 
-            return ResponseError($e->getMessage());
+
+            return ResponseSuccess([], 'Team status updated successfully!');
+        } catch (\Throwable $th) {
+
+            return ResponseError($th->getMessage());
         }
     }
 }

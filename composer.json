@@ -8,9 +8,16 @@
             "Nexzan\\Shared\\": "src/"
         }
     },
+    "repositories": [
+        {
+            "type": "vcs",
+            "url": "https://github.com/alzaf-package/microservice-auth"
+        }
+    ],
     "require": {
         "php": ">=8.1",
-        "bensampo/laravel-enum": "^6.7"
+        "bensampo/laravel-enum": "^6.7",
+        "alzaf-package/microservice-auth": "v1.0.1"
     },
     "extra": {
         "laravel": {

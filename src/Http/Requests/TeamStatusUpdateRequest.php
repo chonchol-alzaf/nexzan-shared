@@ -2,6 +2,8 @@
 
 namespace Nexzan\Shared\Http\Requests;
 
+use Nexzan\Shared\Enums\TeamStatusEnum;
+use Illuminate\Validation\Rule;
 use Nexzan\Shared\Http\Requests\BaseFormRequest;
 
 class TeamStatusUpdateRequest extends BaseFormRequest
@@ -10,7 +12,7 @@ class TeamStatusUpdateRequest extends BaseFormRequest
     {
         return [
             'team_id' => 'required|integer|exists:teams,id',
-            'status' => 'required|boolean',
+            'status' => ['required',Rule::in(TeamStatusEnum::getValues())],
         ];
     }
 }

@@ -8,5 +8,8 @@ return [
     'models' => [
         'team' => \Nexzan\Shared\Models\Team::class,
     ],
+    'jobs'=> [
+        "team_status_update" => \App\Jobs\Team\TeamStatusUpdateJob::class
+    ]
 
 ];
