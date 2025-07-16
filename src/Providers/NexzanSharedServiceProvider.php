@@ -14,6 +14,13 @@ class NexzanSharedServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        $channels = config('logging.channels');
+        if (!array_key_exists('mail', $channels)) {
+            $channels['mail'] = config('nexzan-shared.log_mail_channel');
+
+            config(['logging.channels' => $channels]);
+        }
+
         // Load views with namespace
         $this->loadViewsFrom(__DIR__ . '/../../resources/views', 'nexzan-shared');
 
