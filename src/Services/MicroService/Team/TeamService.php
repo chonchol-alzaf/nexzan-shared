@@ -28,7 +28,7 @@ class TeamService
             return ResponseSuccess([], 'Team status updated successfully!');
         } catch (\Throwable $th) {
 
-            return ResponseError($th->getMessage());
+            return ResponseError($th->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR, $th);
         }
     }
 }
