@@ -2,7 +2,6 @@
 
 namespace Nexzan\Shared\Services\MicroService\Team;
 
-use Nexzan\Shared\Models\Team;
 
 class TeamService
 {
