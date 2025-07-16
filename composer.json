@@ -20,7 +20,7 @@
     "require": {
         "php": ">=8.1",
         "bensampo/laravel-enum": "^6.7",
-        "alzaf-package/microservice-auth": "1.0.1"
+        "alzaf-package/microservice-auth": "^1.0.1"
     },
     "extra": {
         "laravel": {
