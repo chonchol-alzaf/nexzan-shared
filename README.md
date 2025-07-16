@@ -24,6 +24,23 @@ It includes reusable helpers, responses, views, and route definitions that can b
 composer require chonchol-alzaf/nexzan-shared:^1.0
 ```
 
+## GitHub Token 
+
+```bash
+composer config --global github-oauth.github.com YOUR_PERSONAL_ACCESS_TOKEN
+```
+🔐 Generate token: https://github.com/settings/tokens
+
+✅ Required scopes: `read:packages`, `repo`
+
+---
+
+### Step 4: Publish Config & View Files
+```bash
+php artisan vendor:publish --tag=nexzan-shared-views
+php artisan vendor:publish --tag=nexzan-shared-config
+```
+
 ---
 
 ## ⚙️ Configuration
