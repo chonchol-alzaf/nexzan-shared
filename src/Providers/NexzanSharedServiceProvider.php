@@ -9,7 +9,7 @@ class NexzanSharedServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        $this->mergeConfigFrom(__DIR__ . '/../config/nexzan-shared.php', 'nexzan-shared');
+        $this->mergeConfigFrom(__DIR__ . '/../../config/nexzan-shared.php', 'nexzan-shared');
     }
 
     public function boot(): void
@@ -23,7 +23,7 @@ class NexzanSharedServiceProvider extends ServiceProvider
         ], 'nexzan-shared-views');
 
         $this->publishes([
-            __DIR__ . '/../config/nexzan-shared.php' => config_path('nexzan-shared.php'),
+            __DIR__ . '/../../config/nexzan-shared.php' => config_path('nexzan-shared.php'),
         ], 'nexzan-shared-config');
 
         Route::middleware(['api'])
