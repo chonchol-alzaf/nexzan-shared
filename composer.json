@@ -1,6 +1,6 @@
 {
     "name": "nexzan/shared",
-    "description": "Shared package for all Nexzan services",
+    "description": "Shared utility package for Nexzan platform",
     "type": "library",
     "license": "MIT",
     "autoload": {
