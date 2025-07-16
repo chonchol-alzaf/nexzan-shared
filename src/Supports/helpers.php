@@ -1,14 +1,13 @@
 <?php
 
-use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Response;
+use Illuminate\Http\Response;
 use Nexzan\Shared\Exceptions\CustomException;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Pagination\Paginator;
 
 if (! function_exists('ResponseSuccess')) {
-    function ResponseSuccess($data, $message = null): JsonResponse
+    function ResponseSuccess($data, $message = null)
     {
         $items = $data;
         $meta = null;
