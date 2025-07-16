@@ -6,7 +6,10 @@
     "autoload": {
         "psr-4": {
             "Nexzan\\Shared\\": "src/"
-        }
+        },
+        "files": [
+            "src/Supports/helpers.php"
+        ]
     },
     "repositories": [
         {
