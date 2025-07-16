@@ -1,9 +1,13 @@
-# 🔐 Nexzan Shared (Private Package)
-Reusable components shared across all Nexzan services.
+# 🧩 Nexzan Shared Package
+
+Shared utility package for all Nexzan microservices like `atom`, `site`, and others.  
+It includes reusable helpers, responses, views, and route definitions that can be shared across services.
 
 ---
-📦 Installation (Private GitHub Package)
-### Step 1: Add Private Repository to `composer.json`
+
+## 📦 Installation
+
+### Step 1: Add Private Repository
 
 ```json
 "repositories": [
@@ -13,54 +17,104 @@ Reusable components shared across all Nexzan services.
   }
 ]
 ```
+
+### Step 2: Require the Package
+
+```bash
+composer require chonchol-alzaf/nexzan-shared:^1.0
+```
+
 ---
 
-### Step 2: Require the Package via Composer
+## ⚙️ Configuration
+
+### Publish Configuration File
 
 ```bash
-composer require chonchol-alzaf/nexzan-shared:^1.0.0
-```
----
-
-### Step 3: GitHub Token 
-
-```bash
-composer config --global github-oauth.github.com YOUR_PERSONAL_ACCESS_TOKEN
-```
-🔐 Generate token: https://github.com/settings/tokens
-
-✅ Required scopes: `read:packages`, `repo`
-
-### Step 4: Publish Config & View Files
-```bash
-php artisan vendor:publish --tag=nexzan-shared-views
 php artisan vendor:publish --tag=nexzan-shared-config
 ```
 
----
+Creates:
 
-### 📨 Step 5: (Optional) Use Mail Logging Channel
-If you want to send log messages via email (for example: *critical*, *error*, or *warning*), add a custom mail channel in your Laravel logging config.
-
-1️⃣ Open `config/logging.php`
-
-2️⃣ Add a new channel to the `channels` array:
-```php
- 'mail' => [
-    'driver' => 'monolog',
-    'level' => 'debug',
-    'handler' => Nexzan\Shared\Broadcasting\LogEmailHandler::class,
-],
+```
+config/nexzan-shared.php
 ```
 
 ---
 
+## 🖼️ Views
 
-### 📁 Package Highlights
-- 📌 Shared API route: `v1/internal/team-status`
-- 🧩 Common Traits, Enums, Models, Exceptions, and Requests
-- 🧠 Designed for modular Laravel-based microservices..
+### Publish Views
 
+```bash
+php artisan vendor:publish --tag=nexzan-shared-views
+```
+
+Publishes to:
+
+```
+resources/views/vendor/nexzan-shared/
+```
+
+### Load View
+
+```php
+return view('nexzan-shared::emails.log-alert');
+```
+
+---
+
+## 🛣️ Routes
+
+Routes are automatically loaded from:
+
+```
+routes/v1/micro-service/api.php
+```
+
+###  Endpoints
+
+```
+POST /v1/internal/team-status
+```
+---
+
+## 🧰 Helper Functions
+
+These global functions are available automatically.
+
+### ✅ `ResponseSuccess($data = null, $message = 'Success', $status = 200)`
+
+Send a success JSON response.
+
+```php
+return ResponseSuccess($users, 'User list loaded');
+```
+
+---
+
+### ❌ `ResponseError($message = null, $status = 500, $throwable = null)`
+
+Send a failure response with optional exception.
+
+```php
+return ResponseError('Something went wrong');
+```
+
+- Logs error in `default` and `mail` channels
+- Supports:
+  - `CustomException`
+  - `CloudPanelException` (only if the class exists in the app)
+
+---
+
+### 📊 `PaginateMetaData($paginator)`
+
+Returns useful metadata from paginator instance.
+
+```php
+PaginateMetaData(User::paginate());
+```
 ---
 
 ### 📁 Package Structure
@@ -74,22 +128,21 @@ git tag v1.0.0
 git push origin v1.0.0
 ```
 
-Then update in other projects:
+## ✅ Use Cases
 
-```bash
-composer update chonchol-alzaf/nexzan-shared
-```
+- Shared API response format (`ResponseSuccess`, `ResponseError`)
+- Reusable blade views
+- Shared internal routes
+- Central configuration management
 
-📬 Contributions
-You may extend the shared package by:
+---
 
-- Adding new Enums  
-- Adding base Traits / Models  
-- Creating shared Exceptions or Requests
-- Create relevant any class
+## 🔮 Future Ideas
 
-All changes should go through pull requests (PRs).
-### 🧪 Tested With
-- Laravel 10.x / 11.x  
-- PHP 8.1 / 8.2+  
-- Composer 2.x
+- [ ] Add traits, macros, or middleware
+- [ ] Add unit tests for helper functions
+- [ ] Add localization for messages
+
+---
+
+Maintained by [Alzaf](https://alzaf.com) 🛠️
