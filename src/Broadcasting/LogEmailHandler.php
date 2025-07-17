@@ -15,6 +15,6 @@ class LogEmailHandler extends AbstractProcessingHandler
         $timestamp = $record['datetime']->format('Y-m-d H:i:s');
 
         Mail::to(config('nexzan-shared.log_notification_email','suppor@nexzan.com'))
-            ->send(new LogAlertMail($message, $level, $timestamp));
+            ->queue(new LogAlertMail($message, $level, $timestamp));
     }
 }
