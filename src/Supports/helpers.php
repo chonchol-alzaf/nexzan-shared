@@ -1,10 +1,11 @@
 <?php
 
-use Illuminate\Support\Facades\Log;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Pagination\Paginator;
+use Illuminate\Database\QueryException;
 use Nexzan\Shared\Exceptions\CustomException;
 use Illuminate\Pagination\LengthAwarePaginator;
-use Illuminate\Pagination\Paginator;
 
 if (! function_exists('ResponseSuccess')) {
     function ResponseSuccess($data, $message = null)
@@ -52,14 +53,15 @@ if (! function_exists('ResponseError')) {
         } elseif (
             class_exists('App\\Exceptions\\CloudPanelException') &&
             $throwable instanceof \App\Exceptions\CloudPanelException
-        ) 
-        {
+        ) {
             $jsonStatus = $throwable->getStatusCode();
             $response = $throwable->getMessage();
             $message = json_decode($response)->message ?? $message;
+        } elseif ($throwable && $throwable instanceof QueryException) {
+            $message = 'A database error occurred.Please try again';
         }
 
-        if ($jsonStatus == 0) {
+        if (!is_int($jsonStatus) || $jsonStatus < 100 || $jsonStatus > 599) {
             $jsonStatus = Response::HTTP_INTERNAL_SERVER_ERROR;
         }
 
