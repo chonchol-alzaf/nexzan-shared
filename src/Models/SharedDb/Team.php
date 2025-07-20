@@ -1,6 +1,6 @@
 <?php
 
-namespace Nexzan\Shared\Models;
+namespace Nexzan\Shared\Models\SharedDb;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Notifications\Notifiable;
