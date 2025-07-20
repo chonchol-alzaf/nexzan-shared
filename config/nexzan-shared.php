@@ -13,7 +13,7 @@ return [
 
     // Allow user to customize model namespace
     'models' => [
-        'team' => \Nexzan\Shared\Models\Team::class,
+        'team' => \Nexzan\Shared\Models\SharedDb\Team::class,
     ],
     'jobs' => [
         "team_status_update" => \App\Jobs\Team\TeamStatusUpdateJob::class
