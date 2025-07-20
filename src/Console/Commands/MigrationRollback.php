@@ -6,7 +6,7 @@ use Illuminate\Console\Command;
 
 class MigrationRollback extends Command
 {
-    protected $signature = 'migrate:custom-rollback';
+    protected $signature = 'migrate:rollback-custom';
 
     protected $description = 'Rollback the last batch of migrations from both the default and shared_db databases';
 

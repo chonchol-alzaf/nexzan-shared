@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Console\Commands;
+namespace Nexzan\Shared\Console\Commands;
 
 use Illuminate\Console\Command;
 
@@ -13,12 +13,13 @@ class Migration extends Command
     public function handle()
     {
 
-        $this->call('migrate');
-
         $this->call('migrate', [
             '--database' => 'shared_db',
             '--path' => 'database/migrations/shared_db',
             '--force' => true,
         ]);
+
+        $this->call('migrate');
+
     }
 }

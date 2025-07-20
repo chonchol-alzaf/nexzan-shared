@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Schema;
 
 class MigrationFresh extends Command
 {
-    protected $signature = 'migrate:custom-fresh';
+    protected $signature = 'migrate:fresh-custom';
 
     protected $description = 'Fresh all migrations including shared_db tables and reseed the database';
 
@@ -61,14 +61,16 @@ class MigrationFresh extends Command
 
         $this->dropCoreServiceTables();
 
-        $this->call('migrate:fresh', [
-            '--seed' => true,
-        ]);
-
         $this->call('migrate', [
             '--database' => 'shared_db',
             '--path' => 'database/migrations/shared_db',
             '--force' => true,
         ]);
+        
+        $this->call('migrate:fresh', [
+            '--seed' => true,
+        ]);
+
+        
     }
 }
