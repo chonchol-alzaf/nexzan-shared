@@ -37,5 +37,14 @@ class NexzanSharedServiceProvider extends ServiceProvider
             ->prefix('v1/internal')
             ->name('v1.internal.')
             ->group(__DIR__ . '/../../routes/v1/micro-service/api.php');
+
+
+         if ($this->app->runningInConsole()) {
+            $this->commands([
+                \Nexzan\Shared\Console\Commands\Migration::class,
+                \Nexzan\Shared\Console\Commands\MigrationRollback::class,
+                \Nexzan\Shared\Console\Commands\MigrationFresh::class,
+            ]);
+        }
     }
 }

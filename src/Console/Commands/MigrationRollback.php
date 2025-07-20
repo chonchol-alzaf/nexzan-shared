@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Console\Commands;
+namespace Nexzan\Shared\Console\Commands;
 
 use Illuminate\Console\Command;
 
-class RollbackCustom extends Command
+class MigrationRollback extends Command
 {
     protected $signature = 'migrate:custom-rollback';
 
