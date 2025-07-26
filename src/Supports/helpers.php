@@ -6,6 +6,14 @@ use Illuminate\Pagination\Paginator;
 use Illuminate\Database\QueryException;
 use Nexzan\Shared\Exceptions\CustomException;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Str;
+
+if (! function_exists('newUniqueId')) {
+    function newUniqueId()
+    {
+        return str_replace('-', '', Str::uuid()->toString());
+    }
+}
 
 if (! function_exists('ResponseSuccess')) {
     function ResponseSuccess($data, $message = null)
