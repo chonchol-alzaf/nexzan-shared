@@ -33,18 +33,28 @@ class NexzanSharedServiceProvider extends ServiceProvider
             __DIR__ . '/../../config/nexzan-shared.php' => config_path('nexzan-shared.php'),
         ], 'nexzan-shared-config');
 
+        // register routes
         Route::middleware(['api'])
             ->prefix('v1/internal')
             ->name('v1.internal.')
             ->group(__DIR__ . '/../../routes/v1/micro-service/api.php');
 
 
-         if ($this->app->runningInConsole()) {
+        if ($this->app->runningInConsole()) {
+            // Register commands
             $this->commands([
                 \Nexzan\Shared\Console\Commands\Migration::class,
                 \Nexzan\Shared\Console\Commands\MigrationRollback::class,
                 \Nexzan\Shared\Console\Commands\MigrationFresh::class,
             ]);
+
+              // Register schedules
+            $this->app->booted(function () {
+                $schedule = $this->app->make(\Illuminate\Console\Scheduling\Schedule::class);
+
+                $schedule->command('telescope:prune --hours=' . config('nexzan-shared.telescope_prune_threshold', 24))
+                    ->daily();
+            });
         }
     }
 }
