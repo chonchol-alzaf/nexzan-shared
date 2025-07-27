@@ -16,4 +16,12 @@ trait HasUuidsTrait
     {
         return (string) newUuid();
     }
+
+    /**
+     * Override the default uuid validator to and return true.
+     */
+    protected function isValidUniqueId($value): bool
+    {
+        return true;
+    }
 }
