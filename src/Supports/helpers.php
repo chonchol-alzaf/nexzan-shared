@@ -8,8 +8,8 @@ use Nexzan\Shared\Exceptions\CustomException;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Str;
 
-if (! function_exists('newUniqueId')) {
-    function newUniqueId()
+if (! function_exists('newUuid')) {
+    function newUuid()
     {
         return str_replace('-', '', Str::uuid()->toString());
     }
