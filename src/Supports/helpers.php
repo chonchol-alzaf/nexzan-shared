@@ -51,13 +51,14 @@ if (! function_exists('ResponseError')) {
             Log::error($throwable);
             Log::channel('mail')->error($throwable);
         } else {
+            $message = __($message ?? 'Something went wrong');
             Log::error($message);
             Log::channel('mail')->error($message);
         }
 
         if ($throwable && $throwable instanceof CustomException) {
             $jsonStatus = $throwable->getStatusCode();
-            $message = $throwable->getMessage();
+            $message = __($throwable->getMessage());
         } elseif (
             class_exists('App\\Exceptions\\CloudPanelException') &&
             $throwable instanceof \App\Exceptions\CloudPanelException
@@ -66,7 +67,7 @@ if (! function_exists('ResponseError')) {
             $response = $throwable->getMessage();
             $message = json_decode($response)->message ?? $message;
         } elseif ($throwable && $throwable instanceof QueryException) {
-            $message = 'A database error occurred.Please try again';
+            $message = __('A database error occurred.Please try again');
         }
 
         if (!is_int($jsonStatus) || $jsonStatus < 100 || $jsonStatus > 599) {
@@ -75,7 +76,7 @@ if (! function_exists('ResponseError')) {
 
         return response()->json([
             'success' => false,
-            'message' => __($message),
+            'message' => $message,
         ], $jsonStatus);
     }
 }
