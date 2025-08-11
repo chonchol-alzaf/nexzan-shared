@@ -11,7 +11,7 @@ use Illuminate\Support\Str;
 if (! function_exists('newUuid')) {
     function newUuid()
     {
-        return str_replace('-', '', Str::uuid()->toString());
+        return Str::ulid(); // time sortable
     }
 }
 
