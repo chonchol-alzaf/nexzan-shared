@@ -48,8 +48,12 @@ if (! function_exists('ResponseError')) {
     function ResponseError($message = null, $jsonStatus = Response::HTTP_INTERNAL_SERVER_ERROR, $throwable = null)
     {
         if ($throwable) {
-            Log::error($throwable);
-            Log::channel('mail')->error($throwable);
+            if (! $throwable instanceof CustomException) {
+                Log::error($throwable);
+                Log::channel('mail')->error($throwable);
+            }
+            else
+                Log::error($throwable->getMessage());
         } else {
             $message = __($message ?? 'Something went wrong');
             Log::error($message);
