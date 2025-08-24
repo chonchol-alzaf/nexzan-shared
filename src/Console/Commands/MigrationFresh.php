@@ -34,9 +34,12 @@ class MigrationFresh extends Command
             // ✅ Safely delete from migrations table
             $migrationName = pathinfo($file->getFilename(), PATHINFO_FILENAME);
 
-            DB::connection('shared_db')->table("migrations")
-                ->where('migration', $migrationName)
-                ->delete();
+            if (Schema::connection('shared_db')->hasTable("migrations")) {
+                DB::connection('shared_db')->table("migrations")
+                    ->where('migration', $migrationName)
+                    ->delete();
+            }
+            $this->info("Deleted from migration table: $migrationName");
         }
 
         $tables = array_unique($tables);
