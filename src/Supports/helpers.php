@@ -2,6 +2,7 @@
 
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Log;
+use App\Events\BroadcastEvent;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Database\QueryException;
 use Nexzan\Shared\Exceptions\CustomException;
@@ -105,5 +106,16 @@ if (! function_exists('paginateMetaData')) {
             'from' => $data->firstItem(),
             'to' => $data->lastItem(),
         ];
+    }
+}
+
+
+if (! function_exists('eventBroadcast')) {
+    function eventBroadcast(string $listen, $user_id, array $data, $should_notificaiton = true)
+    {
+        BroadcastEvent::dispatch($listen, $user_id, $data);
+        if ($should_notificaiton) {
+            BroadcastEvent::dispatch("global-notification", $user_id, $data,"notification");
+        }
     }
 }
