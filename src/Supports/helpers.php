@@ -115,7 +115,17 @@ if (! function_exists('eventBroadcast')) {
     {
         BroadcastEvent::dispatch($listen, $user_id, $data);
         if ($should_notificaiton) {
-            BroadcastEvent::dispatch("global-notification", $user_id, $data,"notification");
+            BroadcastEvent::dispatch("global-notification", $user_id, $data);
         }
     }
 }
+
+if (! function_exists('getXUserIp')) {
+    function getXUserIp()
+    {
+        $x_user_ip = request()->header('x-user-ip');
+
+        return $x_user_ip ?? request()->ip();
+    }
+}
+
