@@ -46,7 +46,7 @@ if (! function_exists('ResponseSuccess')) {
 
 
 if (! function_exists('ResponseError')) {
-    function ResponseError($message = null, $jsonStatus = Response::HTTP_INTERNAL_SERVER_ERROR, $throwable = null)
+    function ResponseError($message = null, $jsonStatus = Response::HTTP_INTERNAL_SERVER_ERROR, $throwable = null,$resource = null)
     {
         if ($throwable) {
             if (! $throwable instanceof CustomException) {
@@ -82,6 +82,7 @@ if (! function_exists('ResponseError')) {
         return response()->json([
             'success' => false,
             'message' => $message,
+            'resource' => $resource,
         ], $jsonStatus);
     }
 }
