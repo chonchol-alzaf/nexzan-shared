@@ -7,7 +7,7 @@ use Illuminate\Notifications\Notifiable;
 
 class Team extends Model
 {
-    use Notifiable;
+    protected $connection = 'shared_db';
 
     protected $fillable = [
         'id',
