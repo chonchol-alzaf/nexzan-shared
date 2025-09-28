@@ -11,6 +11,7 @@ class Team extends Model
 
     protected $fillable = [
         'id',
+        'default_project_id',
         'title',
         'email',
         'status',
