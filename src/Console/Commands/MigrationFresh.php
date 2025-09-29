@@ -1,11 +1,10 @@
 <?php
-
 namespace Nexzan\Shared\Console\Commands;
 
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 
 class MigrationFresh extends Command
@@ -17,8 +16,8 @@ class MigrationFresh extends Command
     public function dropCoreServiceTables(): void
     {
         $migrationPath = database_path('migrations/shared_db');
-        $files = File::files($migrationPath);
-        $tables = [];
+        $files         = File::files($migrationPath);
+        $tables        = [];
 
         Schema::connection('shared_db')->disableForeignKeyConstraints();
 
@@ -57,23 +56,20 @@ class MigrationFresh extends Command
         Schema::connection('shared_db')->enableForeignKeyConstraints();
     }
 
-
-
     public function handle()
     {
 
         $this->dropCoreServiceTables();
-
+        $this->info("Run shared_db migrations");
         $this->call('migrate', [
             '--database' => 'shared_db',
-            '--path' => 'database/migrations/shared_db',
-            '--force' => true,
+            '--path'     => 'database/migrations/shared_db',
+            '--force'    => true,
         ]);
-        
+
         $this->call('migrate:fresh', [
             '--seed' => true,
         ]);
 
-        
     }
 }
