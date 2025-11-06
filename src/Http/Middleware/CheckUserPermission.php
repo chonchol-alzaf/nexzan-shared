@@ -1,0 +1,53 @@
+<?php
+namespace Nexzan\Shared\Http\Middleware;
+
+use Closure;
+use App\Models\User;
+use Nexzan\Shared\Exceptions\CustomException;
+use Nexzan\Shared\Traits\RolePermissionTrait;
+
+class CheckUserPermission
+{
+    use RolePermissionTrait;
+    public function handle($request, Closure $next, ...$permissionKeys)
+    {
+        $user = $request->user();
+
+        if (! $user) {
+            throw new CustomException('Unauthorized: No authenticated user found.', 401);
+        }
+
+        $lastParam = strtolower(end($permissionKeys));
+        $mode = in_array($lastParam, ['any', 'all']) ? array_pop($permissionKeys) : 'any';
+
+        if (! $this->userHasAnyPermission($user, $permissionKeys,$mode)) {
+            throw new CustomException('Unauthorized: You don’t have permission to perform this action.', 403);
+        }
+        return $next($request);
+    }
+
+    private function userHasAnyPermission(User $user, array $permissionKeys,$mode)
+    {
+        $user_role_id = $this->getUserRoleId($user->id, $user->current_team_id);
+
+        if (! $user_role_id) {
+            return false;
+        }
+
+        $expectedPermissions = collect($permissionKeys)
+            ->flatMap(fn($item) => explode(',', $item)) // split comma-separated values
+            ->map(fn($item) => trim($item))
+            ->filter()
+            ->unique()
+            ->values();
+        
+        $user_permission_keys = $this->getRolePermissions($user_role_id);
+
+        if ($mode === 'any') {
+            return $expectedPermissions->some(fn($key) => $user_permission_keys->contains($key));
+        }
+
+        // 🔸 “all” → all must match
+        return $expectedPermissions->every(fn($key) => $user_permission_keys->contains($key));
+    }
+}
