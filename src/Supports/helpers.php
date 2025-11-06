@@ -8,6 +8,7 @@ use Illuminate\Database\QueryException;
 use Nexzan\Shared\Exceptions\CustomException;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Str;
+use Microservice\Auth\Facades\Auth;
 
 if (! function_exists('newUuid')) {
     function newUuid()
@@ -41,6 +42,20 @@ if (! function_exists('ResponseSuccess')) {
         }
 
         return response()->json($response, Response::HTTP_OK);
+    }
+}
+
+if (! function_exists('userTeamId')) {
+    function userTeamId()
+    {
+        return Auth::teamId();
+    }
+}
+
+if (! function_exists('userId')) {
+    function userId()
+    {
+        return Auth::Id();
     }
 }
 
