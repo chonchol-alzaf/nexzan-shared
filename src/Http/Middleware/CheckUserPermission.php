@@ -2,7 +2,6 @@
 namespace Nexzan\Shared\Http\Middleware;
 
 use Closure;
-use App\Models\User;
 use Nexzan\Shared\Exceptions\CustomException;
 use Nexzan\Shared\Traits\RolePermissionTrait;
 
@@ -26,7 +25,7 @@ class CheckUserPermission
         return $next($request);
     }
 
-    private function userHasAnyPermission(User $user, array $permissionKeys,$mode)
+    private function userHasAnyPermission($user, array $permissionKeys,$mode)
     {
         $user_role_id = $this->getUserRoleId($user->id, $user->current_team_id);
 
