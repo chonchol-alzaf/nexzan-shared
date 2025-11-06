@@ -1,11 +1,11 @@
 <?php
 namespace Nexzan\Shared\Traits;
 
-use App\Models\SharedDb\TeamUser;
 use Illuminate\Support\Facades\DB;
 use App\Models\SharedDb\CustomRole;
 use App\Models\SharedDb\DefaultRole;
 use Illuminate\Support\Facades\Cache;
+use Nexzan\Shared\Models\SharedDb\TeamUser;
 use Nexzan\Shared\Exceptions\CustomException;
 
 trait RolePermissionTrait
@@ -24,7 +24,7 @@ trait RolePermissionTrait
 
     private function getCustomRoleCacheTagName()
     {
-        $tag = "custom-roles-tag:" . currentTeamId();
+        $tag = "custom-roles-tag:" . userTeamId();
         return $tag;
     }
 
