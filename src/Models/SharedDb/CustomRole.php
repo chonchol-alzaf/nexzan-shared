@@ -6,6 +6,7 @@ use Nexzan\Shared\Traits\HasUuidsTrait;
 
 class CustomRole extends Model
 {
+    use HasUuidsTrait;
     protected $connection = 'shared_db';
 
     public function permissionKeys()

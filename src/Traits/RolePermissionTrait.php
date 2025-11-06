@@ -2,11 +2,12 @@
 namespace Nexzan\Shared\Traits;
 
 use Illuminate\Support\Facades\DB;
-use App\Models\SharedDb\CustomRole;
-use App\Models\SharedDb\DefaultRole;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
 use Nexzan\Shared\Models\SharedDb\TeamUser;
 use Nexzan\Shared\Exceptions\CustomException;
+use Nexzan\Shared\Models\SharedDb\CustomRole;
+use Nexzan\Shared\Models\SharedDb\DefaultRole;
 
 trait RolePermissionTrait
 {
@@ -62,8 +63,9 @@ trait RolePermissionTrait
             throw new CustomException('Role is not valid!', 400);
         }
 
-        return Cache::tags([self::TAG_DEFAULT_ROLES, $this->getCustomRoleCacheTagName()])->rememberForever($role_id, function () use ($role) {
 
+        // TODO:: ei cache gula shared cache e store hobe
+        return Cache::tags([self::TAG_DEFAULT_ROLES, $this->getCustomRoleCacheTagName()])->rememberForever($role_id, function () use ($role) {
             $role->loadMissing('permissionKeys:name');
             return $role->permissionKeys->pluck('name');
         });

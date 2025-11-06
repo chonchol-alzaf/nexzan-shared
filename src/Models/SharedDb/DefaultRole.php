@@ -7,6 +7,7 @@ use Nexzan\Shared\Traits\HasUuidsTrait;
 
 class DefaultRole extends Model
 {
+    use HasUuidsTrait;
 
     protected $connection = 'shared_db';
 
