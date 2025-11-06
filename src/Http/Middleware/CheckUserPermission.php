@@ -2,7 +2,6 @@
 namespace Nexzan\Shared\Http\Middleware;
 
 use Closure;
-use App\Models\User;
 use Nexzan\Shared\Exceptions\CustomException;
 use Nexzan\Shared\Traits\RolePermissionTrait;
 
