@@ -3,8 +3,8 @@ namespace Nexzan\Shared\Http\Middleware;
 
 use Closure;
 use Illuminate\Support\Facades\Log;
-use Nexzan\Shared\Exceptions\CustomException;
 use Nexzan\Shared\Traits\RolePermissionTrait;
+use Illuminate\Validation\UnauthorizedException;
 
 class CheckUserPermission
 {
@@ -15,7 +15,7 @@ class CheckUserPermission
         $mode = in_array($lastParam, ['any', 'all']) ? array_pop($permissionKeys) : 'any';
 
         if (! $this->userHasAnyPermission($permissionKeys,$mode)) {
-            throw new CustomException('Unauthorized: You don’t have permission to perform this action.', 403);
+            throw new UnauthorizedException('Unauthorized: You don’t have permission to perform this action.', 403);
         }
         return $next($request);
     }
