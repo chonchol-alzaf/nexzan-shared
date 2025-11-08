@@ -2,6 +2,7 @@
 namespace Nexzan\Shared\Http\Middleware;
 
 use Closure;
+use Illuminate\Support\Facades\Log;
 use Nexzan\Shared\Exceptions\CustomException;
 use Nexzan\Shared\Traits\RolePermissionTrait;
 
@@ -10,7 +11,6 @@ class CheckUserPermission
     use RolePermissionTrait;
     public function handle($request, Closure $next, ...$permissionKeys)
     {
-       
         $lastParam = strtolower(end($permissionKeys));
         $mode = in_array($lastParam, ['any', 'all']) ? array_pop($permissionKeys) : 'any';
 
@@ -27,6 +27,7 @@ class CheckUserPermission
         if (! $user_role_id) {
             return false;
         }
+
 
         $expectedPermissions = collect($permissionKeys)
             ->flatMap(fn($item) => explode(',', $item)) // split comma-separated values

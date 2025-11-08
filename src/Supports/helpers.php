@@ -1,14 +1,13 @@
 <?php
 
-use Illuminate\Http\Response;
-use Illuminate\Support\Facades\Log;
 use App\Events\BroadcastEvent;
-use Illuminate\Pagination\Paginator;
 use Illuminate\Database\QueryException;
-use Nexzan\Shared\Exceptions\CustomException;
+use Illuminate\Http\Response;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Pagination\Paginator;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
-use Microservice\Auth\Facades\Auth;
+use Nexzan\Shared\Exceptions\CustomException;
 
 if (! function_exists('newUuid')) {
     function newUuid()
@@ -21,7 +20,7 @@ if (! function_exists('ResponseSuccess')) {
     function ResponseSuccess($data, $message = null)
     {
         $items = $data;
-        $meta = null;
+        $meta  = null;
 
         if (isset($data['meta'])) {
             $meta = $data['meta'];
@@ -32,8 +31,8 @@ if (! function_exists('ResponseSuccess')) {
         }
 
         $response = [
-            'success' => true,
-            'message' => __($message ?? 'Success'),
+            'success'  => true,
+            'message'  => __($message ?? 'Success'),
             'resource' => $items,
         ];
 
@@ -45,31 +44,43 @@ if (! function_exists('ResponseSuccess')) {
     }
 }
 
+function getAuthService()
+{
+    return config("service-core.service_name",'undefined') == 'gateway'
+         ?\Illuminate\Support\Facades\Auth::class
+        : \Microservice\Auth\Facades\Auth::class;
+}
+
 if (! function_exists('userTeamId')) {
     function userTeamId()
     {
-        return Auth::teamId();
+        if (config("service-core.service_name",'undefined') == 'gateway') {
+
+            $user = getAuthService()::user();
+            return $user->current_team_id ?? null;
+        }
+        return getAuthService()::teamId();
     }
 }
 
 if (! function_exists('userId')) {
     function userId()
     {
-        return Auth::Id();
+        return getAuthService()::Id();
     }
 }
 
-
 if (! function_exists('ResponseError')) {
-    function ResponseError($message = null, $jsonStatus = Response::HTTP_INTERNAL_SERVER_ERROR, $throwable = null,$resource = null)
+    function ResponseError($message = null, $jsonStatus = Response::HTTP_INTERNAL_SERVER_ERROR, $throwable = null, $resource = null)
     {
         if ($throwable) {
             if (! $throwable instanceof CustomException) {
                 Log::error($throwable);
                 Log::channel('mail')->error($throwable);
-            }
-            else
+            } else {
                 Log::error($throwable->getMessage());
+            }
+
         } else {
             $message = __($message ?? 'Something went wrong');
             Log::error($message);
@@ -78,25 +89,25 @@ if (! function_exists('ResponseError')) {
 
         if ($throwable && $throwable instanceof CustomException) {
             $jsonStatus = $throwable->getStatusCode();
-            $message = __($throwable->getMessage());
+            $message    = __($throwable->getMessage());
         } elseif (
             class_exists('App\\Exceptions\\CloudPanelException') &&
             $throwable instanceof \App\Exceptions\CloudPanelException
         ) {
             $jsonStatus = $throwable->getStatusCode();
-            $response = $throwable->getMessage();
-            $message = json_decode($response)->message ?? $message;
+            $response   = $throwable->getMessage();
+            $message    = json_decode($response)->message ?? $message;
         } elseif ($throwable && $throwable instanceof QueryException) {
             $message = __('A database error occurred.Please try again');
         }
 
-        if (!is_int($jsonStatus) || $jsonStatus < 100 || $jsonStatus > 599) {
+        if (! is_int($jsonStatus) || $jsonStatus < 100 || $jsonStatus > 599) {
             $jsonStatus = Response::HTTP_INTERNAL_SERVER_ERROR;
         }
 
         return response()->json([
-            'success' => false,
-            'message' => $message,
+            'success'  => false,
+            'message'  => $message,
             'resource' => $resource,
         ], $jsonStatus);
     }
@@ -110,21 +121,20 @@ if (! function_exists('paginateMetaData')) {
         }
 
         $total_items = $data->total();
-        $per_page = $data->perPage();
+        $per_page    = $data->perPage();
         $total_pages = ceil($total_items / $per_page);
 
         return [
             'current_page' => $data->currentPage(),
-            'last_page' => $data->lastPage(),
-            'per_page' => $per_page,
-            'total_items' => $total_items,
-            'total_pages' => $total_pages,
-            'from' => $data->firstItem(),
-            'to' => $data->lastItem(),
+            'last_page'    => $data->lastPage(),
+            'per_page'     => $per_page,
+            'total_items'  => $total_items,
+            'total_pages'  => $total_pages,
+            'from'         => $data->firstItem(),
+            'to'           => $data->lastItem(),
         ];
     }
 }
-
 
 if (! function_exists('eventBroadcast')) {
     function eventBroadcast(string $listen, $user_id, array $data, $should_notificaiton = true)
@@ -144,4 +154,3 @@ if (! function_exists('getXUserIp')) {
         return $x_user_ip ?? request()->ip();
     }
 }
-

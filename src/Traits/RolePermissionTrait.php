@@ -2,7 +2,6 @@
 namespace Nexzan\Shared\Traits;
 
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
 use Nexzan\Shared\Models\SharedDb\TeamUser;
 use Nexzan\Shared\Exceptions\CustomException;
@@ -47,7 +46,7 @@ trait RolePermissionTrait
 
     public function getUserRoleId($user_id, $team_id)
     {
-        return Cache::rememberForever($this->getUserRoleCacheKey($user_id, $team_id), function () use ($user_id, $team_id) {
+        return Cache::store('shared_redis')->rememberForever($this->getUserRoleCacheKey($user_id, $team_id), function () use ($user_id, $team_id) {
             return TeamUser::where('user_id', $user_id)
                 ->where("team_id", $team_id)
                 ->value("role_id");
@@ -63,9 +62,7 @@ trait RolePermissionTrait
             throw new CustomException('Role is not valid!', 400);
         }
 
-
-        // TODO:: ei cache gula shared cache e store hobe
-        return Cache::tags([self::TAG_DEFAULT_ROLES, $this->getCustomRoleCacheTagName()])->rememberForever($role_id, function () use ($role) {
+        return Cache::store('shared_redis')->tags([self::TAG_DEFAULT_ROLES, $this->getCustomRoleCacheTagName()])->rememberForever($role_id, function () use ($role) {
             $role->loadMissing('permissionKeys:name');
             return $role->permissionKeys->pluck('name');
         });
@@ -75,7 +72,7 @@ trait RolePermissionTrait
 
     public function getDefaultRole($role_id)
     {
-        $cache_data = Cache::tags([self::TAG_DEFAULT_ROLES])->rememberForever($this->getDefaultRoleCacheKey($role_id), function () use ($role_id) {
+        $cache_data = Cache::store('shared_redis')->tags([self::TAG_DEFAULT_ROLES])->rememberForever($this->getDefaultRoleCacheKey($role_id), function () use ($role_id) {
             $result = DefaultRole::select('id', 'name', 'short_description', DB::raw('true as is_system_default'))
                 ->where("id", $role_id)
                 ->first();
@@ -93,7 +90,7 @@ trait RolePermissionTrait
     {
         $cache_key = $this->getCustomRoleCacheKey($role_id);
 
-        $cache_data = Cache::tags([$this->getCustomRoleCacheTagName()])->rememberForever($cache_key, function () use ($role_id) {
+        $cache_data = Cache::store('shared_redis')->tags([$this->getCustomRoleCacheTagName()])->rememberForever($cache_key, function () use ($role_id) {
             $result = CustomRole::select('id', 'name', 'short_description', DB::raw('false as is_system_default'))
                 ->where("id", $role_id)
                 ->first();
