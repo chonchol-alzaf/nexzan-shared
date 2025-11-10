@@ -32,8 +32,22 @@ class CheckUserPermission
             ->values();
 
         $user_permission_keys = $this->getRolePermissions($user_role_id);
+        
 
-        return $expectedPermissions->some(fn($key) => $user_permission_keys->contains($key));
+        if ($expectedPermissions->some(fn($key) => $user_permission_keys->contains($key))) {
+            return true;
+        }
+
+        // TODO: in future we will cache this query
+        $hasOverride = ResourcePermission::where("team_id", userTeamId())
+            ->where("user_id", userId())
+            ->where("effect", ResourcePermission::PERMISSION_TYPE['allow'])
+            ->whereHas("permissionKey", function ($q) use ($permissionKeys) {
+                $q->whereIn("name", $permissionKeys);
+            })
+            ->exists();
+
+        return (bool) $hasOverride;
 
     }
 }
