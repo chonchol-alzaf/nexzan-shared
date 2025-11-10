@@ -4,26 +4,22 @@ namespace App\Models\SharedDb;
 
 use Illuminate\Database\Eloquent\Model;
 use Nexzan\Shared\Traits\HasUuidsTrait;
-use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 class ResourcePermission extends Model
 {
-    use HasUuidsTrait;
 
     protected $connection = 'shared_db';
-
-    protected $fillable = [
-    ];
 
     public const RESOURCE_TYPE = [
         "atom"=> "atom",
         "site"=> "site"
     ];
 
-    public function resource(): MorphTo
-    {
-        return $this->morphTo();
-    }
+    public const PERMISSION_TYPE = [
+        "allow"=> "allow",
+        "deny"=> "deny"
+    ];
+
 
     public function permissionKey()
     {
