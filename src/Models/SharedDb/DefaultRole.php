@@ -1,7 +1,6 @@
 <?php
 namespace Nexzan\Shared\Models\SharedDb;
 
-use App\Models\SharedDb\TeamUser;
 use Illuminate\Database\Eloquent\Model;
 use Nexzan\Shared\Traits\HasUuidsTrait;
 
