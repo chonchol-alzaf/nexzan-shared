@@ -76,7 +76,7 @@ if (! function_exists('ResponseError')) {
         if ($throwable) {
             if (! $throwable instanceof CustomException) {
                 Log::error($throwable);
-                Log::channel('mail')->error($throwable);
+                //Log::channel('mail')->error($throwable);
             } else {
                 Log::error($throwable->getMessage());
             }
@@ -84,7 +84,7 @@ if (! function_exists('ResponseError')) {
         } else {
             $message = __($message ?? 'Something went wrong');
             Log::error($message);
-            Log::channel('mail')->error($message);
+            //Log::channel('mail')->error($message);
         }
 
         if ($throwable && $throwable instanceof CustomException) {
@@ -98,7 +98,7 @@ if (! function_exists('ResponseError')) {
             $response   = $throwable->getMessage();
             $message    = json_decode($response)->message ?? $message;
         } elseif ($throwable && $throwable instanceof QueryException) {
-            $message = __('A database error occurred.Please try again');
+            $message = 'A database error occurred.Please try again';
         }
 
         if (! is_int($jsonStatus) || $jsonStatus < 100 || $jsonStatus > 599) {
