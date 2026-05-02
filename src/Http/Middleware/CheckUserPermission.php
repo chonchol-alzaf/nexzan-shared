@@ -2,6 +2,7 @@
 namespace Nexzan\Shared\Http\Middleware;
 
 use Closure;
+use Microservice\Auth\Facades\Auth;
 use Nexzan\Shared\Exceptions\CustomException;
 use Nexzan\Shared\Traits\RolePermissionTrait;
 
@@ -18,37 +19,8 @@ class CheckUserPermission
 
     private function userHasAnyPermission(array $permissionKeys)
     {
-        $user_role_id = $this->getUserRoleId(userId(), userTeamId());
+        $userPermissions = Auth::userPermissions();
 
-        if (! $user_role_id) {
-            return false;
-        }
-
-        $expectedPermissions = collect($permissionKeys)
-            ->flatMap(fn($item) => explode(',', $item)) // split comma-separated values
-            ->map(fn($item) => trim($item))
-            ->filter()
-            ->unique()
-            ->values();
-
-        $user_permission_keys = $this->getRolePermissions($user_role_id);
-        
-
-        if ($expectedPermissions->some(fn($key) => $user_permission_keys->contains($key))) {
-            return true;
-        }
-
-        // TODO: in future we will cache this query
-        $hasOverride = ResourcePermission::where("team_id", userTeamId())
-            ->where("user_id", userId())
-            ->where("effect", ResourcePermission::PERMISSION_TYPE['allow'])
-            ->whereHas("permissionKey", function ($q) use ($permissionKeys) {
-                $q->whereIn("name", $permissionKeys);
-            })
-            ->exists();
-
-        return (bool) $hasOverride;
-
+        return ! empty(array_intersect($permissionKeys, $userPermissions));
     }
 }
-

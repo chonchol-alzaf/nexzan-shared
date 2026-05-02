@@ -11,16 +11,10 @@
             "src/Supports/helpers.php"
         ]
     },
-    "repositories": [
-        {
-            "type": "vcs",
-            "url": "https://github.com/alzaf-package/microservice-auth"
-        }
-    ],
+  
     "require": {
-        "php": ">=8.1",
+        "php": ">=8.2",
         "bensampo/laravel-enum": "^6.7",
-        "alzaf-package/microservice-auth": "^1.0.1",
         "php-amqplib/php-amqplib": "*",
         "firebase/php-jwt": "^7.0"
     },

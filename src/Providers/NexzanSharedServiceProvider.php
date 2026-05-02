@@ -1,21 +1,24 @@
 <?php
-
 namespace Nexzan\Shared\Providers;
 
-use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
+use Nexzan\Shared\Supports\AuthHelper;
 
 class NexzanSharedServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
         $this->mergeConfigFrom(__DIR__ . '/../../config/nexzan-shared.php', 'nexzan-shared');
+
+        $this->app->singleton('authUser', function () {
+            return new AuthHelper();
+        });
     }
 
     public function boot(): void
     {
         $channels = config('logging.channels');
-        if (!array_key_exists('mail', $channels)) {
+        if (! array_key_exists('mail', $channels)) {
             $channels['mail'] = config('nexzan-shared.log_mail_channel');
 
             config(['logging.channels' => $channels]);
@@ -33,13 +36,6 @@ class NexzanSharedServiceProvider extends ServiceProvider
             __DIR__ . '/../../config/nexzan-shared.php' => config_path('nexzan-shared.php'),
         ], 'nexzan-shared-config');
 
-        // register routes
-        Route::middleware(['api'])
-            ->prefix('v1/internal')
-            ->name('v1.internal.')
-            ->group(__DIR__ . '/../../routes/v1/micro-service/api.php');
-
-
         if ($this->app->runningInConsole()) {
             // Register commands
             $this->commands([
@@ -48,7 +44,7 @@ class NexzanSharedServiceProvider extends ServiceProvider
                 \Nexzan\Shared\Console\Commands\MigrationFresh::class,
             ]);
 
-              // Register schedules
+            // Register schedules
             $this->app->booted(function () {
                 $schedule = $this->app->make(\Illuminate\Console\Scheduling\Schedule::class);
 

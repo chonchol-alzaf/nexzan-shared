@@ -4,7 +4,6 @@ namespace Nexzan\Shared\Traits;
 use Exception;
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
-use Illuminate\Support\Str;
 use Nexzan\Shared\Exceptions\CustomException;
 
 trait InternalJwtTrait
@@ -101,19 +100,10 @@ trait InternalJwtTrait
 
         $jwtData = (array) $payload->data;
 
-        $request->attributes->set('auth_user', [
-            'id'          => $jwtData['user_id'] ?? null,
-            'name'        => $jwtData['user_name'] ?? null,
-            'email'       => $jwtData['user_email'] ?? null,
-            'type'        => $jwtData['user_type'] ?? null,
-            'vendor_id'   => $jwtData['vendor_id'] ?? null,
-            'vendor_name' => $jwtData['vendor_name'] ?? null,
-            'permissions' => $jwtData['user_permissions'] ?? [],
-        ]);
+        $request->attributes->set('auth_user', $jwtData['user']);
+        $request->attributes->set('team', $jwtData['team']);
 
-        $request->attributes->set('guest_id', $request->header("x-guest-id") ?? Str::ulid()->toString());
-
-        $request->attributes->set('request_id', $jwtData['x-request-id'] ?? null);
+        $request->attributes->set('request_id', $jwtData['request_id'] ?? null);
         $request->attributes->set('api_key', $jwtData['api_key'] ?? null);
         $request->attributes->set('api_secret', $jwtData['api_secret'] ?? null);
     }
