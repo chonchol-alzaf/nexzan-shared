@@ -22,5 +22,17 @@ class CheckUserPermission
         $userPermissions = Auth::userPermissions();
 
         return ! empty(array_intersect($permissionKeys, $userPermissions));
+
+
+        // Resource Permission Override
+        // $hasOverride = ResourcePermission::where("team_id", userTeamId())
+        // ->where("user_id", userId())
+        // ->where("effect", ResourcePermission::PERMISSION_TYPE['allow'])
+        // ->whereHas("permissionKey", function ($q) use ($permissionKeys) {
+        //     $q->whereIn("name", $permissionKeys);
+        // })
+        // ->exists();
+
+        // return (bool) $hasOverride;
     }
 }
