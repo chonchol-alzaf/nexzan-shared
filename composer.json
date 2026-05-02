@@ -21,7 +21,8 @@
         "php": ">=8.1",
         "bensampo/laravel-enum": "^6.7",
         "alzaf-package/microservice-auth": "^1.0.1",
-        "php-amqplib/php-amqplib": "*"
+        "php-amqplib/php-amqplib": "*",
+        "firebase/php-jwt": "^7.0"
     },
     "extra": {
         "laravel": {
