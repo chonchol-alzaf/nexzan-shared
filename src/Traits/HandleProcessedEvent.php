@@ -2,7 +2,7 @@
 
 namespace Nexzan\Shared\Traits;
 
-use App\Models\ProcessedEvent;
+use Nexzan\Shared\Models\ProcessedEvent;
 
 
 trait HandleProcessedEvent
