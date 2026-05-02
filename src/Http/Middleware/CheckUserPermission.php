@@ -2,7 +2,7 @@
 namespace Nexzan\Shared\Http\Middleware;
 
 use Closure;
-use Microservice\Auth\Facades\Auth;
+use Nexzan\Shared\Facades\Auth;
 use Nexzan\Shared\Exceptions\CustomException;
 use Nexzan\Shared\Traits\RolePermissionTrait;
 

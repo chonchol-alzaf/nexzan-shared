@@ -1,5 +1,5 @@
 <?php
-namespace Nexzan\Shared\Middleware;
+namespace Nexzan\Shared\Http\Middleware;
 
 use Closure;
 use Illuminate\Auth\AuthenticationException;

@@ -48,7 +48,7 @@ function getAuthService()
 {
     return config("service-core.service_name",'undefined') == 'gateway'
          ?\Illuminate\Support\Facades\Auth::class
-        : \Microservice\Auth\Facades\Auth::class;
+        : \Nexzan\Shared\Facades\Auth::class;
 }
 
 if (! function_exists('userTeamId')) {
