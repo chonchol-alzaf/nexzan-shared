@@ -2,10 +2,10 @@
 namespace Nexzan\Shared\Http\Middleware;
 
 use Closure;
-use Illuminate\Auth\AuthenticationException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Nexzan\Shared\Traits\InternalJwtTrait;
+use Illuminate\Auth\Access\AuthorizationException;
 
 class KeyAuthMiddleware
 {
@@ -32,7 +32,7 @@ class KeyAuthMiddleware
         $clientIp = $request->ip(); // Get request IP
 
         if (! $key || ! $secret) {
-            throw new AuthenticationException('Unauthorized. Missing key or secret.');
+            throw new AuthorizationException('Unauthorized. Missing key or secret.');
         }
 
         $cache_key = "api_key_{$key}";
@@ -53,12 +53,12 @@ class KeyAuthMiddleware
         $hashedInput = hash_hmac('sha256', $secret, config("nexzan-shared.secret_pepper"));
 
         if (! $apiKey || $hashedInput !== $apiKey->secret) {
-            throw new AuthenticationException('Unauthorized. Invalid key or secret.');
+            throw new AuthorizationException('Unauthorized. Invalid key or secret.');
         }
 
         // Validate IP whitelist
         if (config("nexzan-shared.enable_ip_whitelist") == true && ! $apiKey->isIpAllowed($clientIp)) {
-            throw new AuthenticationException('Forbidden. IP not allowed.');
+            throw new AuthorizationException('Forbidden. IP not allowed.');
         }
 
         // Allow the request to proceed
