@@ -27,7 +27,7 @@ class CheckGatewayUserPermission
         }
         
         $user_role_id = $this->getUserRoleId($user->id, $user->current_team_id);
-        $userPermissions = $this->getRolePermissions($user_role_id);
+        $userPermissions = $this->getRolePermissionNames($user_role_id);
 
         return ! empty(array_intersect($permissionKeys, $userPermissions));
     }
