@@ -3,9 +3,11 @@
 namespace Nexzan\Shared\Traits;
 
 use Nexzan\Shared\Exceptions\CustomException;
+use Nexzan\Shared\Traits\InternalJwtTrait;
 
 trait MicroServiceRequestTrait
 {
+    use InternalJwtTrait;
     public function getRequestConfig($service_name,$config_file = 'service-core')
     {
         $config_key = "{$config_file}.{$service_name}";
@@ -15,13 +17,18 @@ trait MicroServiceRequestTrait
             throw new CustomException('Service credential not found!', 500);
         }
 
+        $jwt_meta   = [
+            'api_key'    => $service['api_key'],
+
+            'api_secret' => $service['secret'],
+            'request_id' => Str::uuid()->toString(),
+        ];
+
+        $internal_token = $this->generateJWTToken($jwt_meta, 'HS256');
+
         return [
             'base_url' => $service['url'],
-            'config' => [
-                'accept' => 'application/json',
-                'x-api-key' => $service['api_key'],
-                'x-api-secret' => $service['secret'],
-            ],
+            'internal_token'=> ['X-Internal-Token' => $internal_token]
         ];
     }
 }
