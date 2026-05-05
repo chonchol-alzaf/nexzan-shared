@@ -100,8 +100,13 @@ trait InternalJwtTrait
 
         $jwtData = (array) $payload->data;
 
-        $request->attributes->set('auth_user', $jwtData['user']);
-        $request->attributes->set('team', $jwtData['team']);
+        if (! empty($jwtData['user'])) {
+            $request->attributes->set('auth_user', $jwtData['user']);
+        }
+
+        if (! empty($jwtData['team'])) {
+            $request->attributes->set('team', $jwtData['team']);
+        }
 
         $request->attributes->set('request_id', $jwtData['request_id'] ?? null);
         $request->attributes->set('api_key', $jwtData['api_key'] ?? null);
