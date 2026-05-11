@@ -2,6 +2,7 @@
 
 namespace Nexzan\Shared\Traits;
 
+use Illuminate\Support\Str;
 use Nexzan\Shared\Exceptions\CustomException;
 use Nexzan\Shared\Traits\InternalJwtTrait;
 
