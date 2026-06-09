@@ -7,6 +7,7 @@ class ProcessedEvent extends Model
 {
     protected $fillable = [
         'event_id',
+        'event',
     ];
 
 }
