@@ -14,7 +14,6 @@
   
     "require": {
         "php": ">=8.2",
-        "bensampo/laravel-enum": "^6.7",
         "php-amqplib/php-amqplib": "*",
         "firebase/php-jwt": "^7.0"
     },
