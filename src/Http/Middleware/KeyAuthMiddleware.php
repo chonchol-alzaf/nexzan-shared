@@ -43,13 +43,6 @@ class KeyAuthMiddleware
             throw new \RuntimeException("Model class [$apiKeyModel] does not exist.");
         }
 
-        $apiKey = Cache::rememberForever($cache_key, function () use ($key, $apiKeyModel) {
-            return $apiKeyModel::select("id", "key", "secret", "whitelist")
-                ->where('key', $key)
-                ->where('is_active', 1)
-                ->first();
-        });
-
         $apiKey = Cache::remember($cache_key, now()->addDays(1), function () use ($key, $apiKeyModel) {
             $apiKey = $apiKeyModel::select("id", "key", "secret", "whitelist")
                 ->where('key', $key)
