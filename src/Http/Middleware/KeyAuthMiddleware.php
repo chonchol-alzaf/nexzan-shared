@@ -50,18 +50,35 @@ class KeyAuthMiddleware
                 ->first();
         });
 
+        $apiKey = Cache::remember($cache_key, now()->addDays(1), function () use ($key, $apiKeyModel) {
+            $apiKey = $apiKeyModel::select("id", "key", "secret", "whitelist")
+                ->where('key', $key)
+                ->where('is_active', 1)
+                ->first();
+
+            return $apiKey?->only(["id", "key", "secret", "whitelist"]);
+        });
+
         $hashedInput = hash_hmac('sha256', $secret, config("nexzan-shared.secret_pepper"));
 
-        if (! $apiKey || $hashedInput !== $apiKey->secret) {
+        if (! $apiKey || $hashedInput !== $apiKey['secret']) {
             throw new AuthorizationException('Unauthorized. Invalid key or secret.');
         }
 
         // Validate IP whitelist
-        if (config("nexzan-shared.enable_ip_whitelist") == true && ! $apiKey->isIpAllowed($clientIp)) {
+        if (config("nexzan-shared.enable_ip_whitelist") == true && ! $this->isIpAllowed($apiKeyModel, $apiKey, $clientIp)) {
             throw new AuthorizationException('Forbidden. IP not allowed.');
         }
 
         // Allow the request to proceed
         return $next($request);
+    }
+
+    private function isIpAllowed(string $apiKeyModel, array $apiKey, string $clientIp): bool
+    {
+        $model = new $apiKeyModel;
+        $model->setRawAttributes($apiKey, true);
+
+        return $model->isIpAllowed($clientIp);
     }
 }
