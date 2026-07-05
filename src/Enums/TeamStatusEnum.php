@@ -9,7 +9,7 @@ enum TeamStatusEnum: int
     case TEMP_SUSPENDED = 3; // bill not paid, but can still use the service and can be reactivated by paying the bill
     case SUSPEND = 4; // suspend by the admin for illegal activities, can be reactivated by the admin
     case TRIAL_ENDED = 5;
-    case TERMINATED = 6; // soft delete team
+    case TERMINATED = 6; // soft delete team from db. that means end of the team
 
     public static function getKey(self|int|string|null $value): ?string
     {
