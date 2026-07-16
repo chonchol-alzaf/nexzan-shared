@@ -146,6 +146,16 @@ if (! function_exists('eventBroadcast')) {
     }
 }
 
+if (! function_exists('eventTeamBroadcast')) {
+    function eventTeamBroadcast(string $listen, $team_id, array $data, $should_notificaiton = true)
+    {
+        BroadcastEvent::dispatch($listen, $team_id, $data,"team-event");
+        if ($should_notificaiton) {
+            BroadcastEvent::dispatch("global-notification", $team_id, $data,"team-event");
+        }
+    }
+}
+
 if (! function_exists('getXUserIp')) {
     function getXUserIp()
     {
