@@ -81,19 +81,81 @@ return view('nexzan-shared::emails.log-alert');
 
 ---
 
-## 🛣️ Routes
+## Team Access Contract
 
-Routes are automatically loaded from:
+The shared package defines the wire-format enums and helpers used by Gateway, Billing, Atom, and Site for account, billing, grace, and request-time access decisions.
 
-```
-routes/v1/micro-service/api.php
+Detailed status behavior and access matrix: [docs/team-access-contract.md](docs/team-access-contract.md)
+
+### Status Enums
+
+| Enum | Values | Owner |
+| --- | --- | --- |
+| `AccountStatusEnum` | `active`, `suspended`, `terminated` | Gateway/admin |
+| `BillingStatusEnum` | `trialing`, `current`, `hold`, `suspended` | Billing |
+| `GracePeriodPolicyEnum` | `full_access`, `existing_resources_only`, `view_only` | Billing |
+| `TeamAccessCapabilityEnum` | `view_dashboard`, `view_resources`, `create_resource`, `use_resource` | Gateway computes, downstream consumes |
+
+There is no `TeamStatusEnum`, no `TeamStatusUpdateRequest`, no `team.status.updated`, and no `past_due` status.
+
+### Internal Token Team Payload
+
+Gateway sends team context to downstream services through `X-Internal-Token`:
+
+```json
+{
+  "team": {
+    "id": 10,
+    "title": "Team",
+    "account_status": "active",
+    "billing_status": "hold",
+    "grace": [],
+    "effective_access": {
+      "view_dashboard": true,
+      "view_resources": true,
+      "create_resource": false,
+      "use_resource": true
+    }
+  }
+}
 ```
 
-###  Endpoints
+Downstream services must use token capabilities for request-time authorization. Local team status tables are read models for events, async jobs, reporting, and ownership checks.
 
+### Auth Helper
+
+`Nexzan\Shared\Supports\AuthHelper` exposes:
+
+- `accountStatus()`
+- `billingStatus()`
+- `teamGrace()`
+- `teamAccess()`
+- `canTeam(string|TeamAccessCapabilityEnum $capability): bool`
+
+`canTeam()` fails closed. Missing team data, missing `effective_access`, unknown capabilities, and false values all deny access.
+
+### Middleware
+
+`Nexzan\Shared\Http\Middleware\CheckTeamAccess` supports route checks:
+
+```php
+Route::post('/resources', $controller)->middleware('check.team.access:create_resource');
+Route::post('/resources/{resource}/deploy', $controller)->middleware('check.team.access:use_resource');
 ```
-POST /v1/internal/team-status
+
+Services should register the alias:
+
+```php
+'check.team.access' => CheckTeamAccess::class,
 ```
+
+Capability mapping:
+
+| Capability | Meaning |
+| --- | --- |
+| `create_resource` | New resources, resize/capacity changes, paid add-ons. |
+| `use_resource` | Existing resource operations such as deploy and power actions. |
+
 ---
 
 ## 🧰 Helper Functions

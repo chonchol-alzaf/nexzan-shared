@@ -1,6 +1,8 @@
 <?php
 namespace Nexzan\Shared\Supports;
 
+use Nexzan\Shared\Enums\TeamAccessCapabilityEnum;
+
 class AuthHelper
 {
     public function authUser()
@@ -53,9 +55,59 @@ class AuthHelper
         return data_get($this->team(), 'title');
     }
 
+    public function accountStatus(): ?string
+    {
+        return data_get($this->team(), 'account_status');
+    }
+
+    public function billingStatus(): ?string
+    {
+        return data_get($this->team(), 'billing_status');
+    }
+
+    public function teamGrace(): ?array
+    {
+        $grace = data_get($this->team(), 'grace');
+
+        return $this->toArray($grace);
+    }
+
+    public function teamAccess(): array
+    {
+        $access = data_get($this->team(), 'effective_access');
+
+        return $this->toArray($access) ?? [];
+    }
+
+    public function canTeam(string|TeamAccessCapabilityEnum $capability): bool
+    {
+        $capability = $capability instanceof TeamAccessCapabilityEnum
+            ? $capability->value
+            : $capability;
+
+        if (! in_array($capability, TeamAccessCapabilityEnum::values(), true)) {
+            return false;
+        }
+
+        return data_get($this->teamAccess(), $capability) === true;
+    }
+
     public function team()
     {
         return request()->attributes->get('team');
+    }
+
+    private function toArray(mixed $value): ?array
+    {
+        if (is_array($value)) {
+            return $value;
+        }
+
+        if (is_object($value)) {
+            return json_decode(json_encode($value), true);
+        }
+
+        return null;
     }
 
 }
