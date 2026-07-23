@@ -41,7 +41,13 @@ class AuthHelper
             'id'    => $this->id(),
             'email' => $this->email(),
             'name'  => $this->name(),
+            'type'  => data_get($this->authUser(), 'type') ?? "user",
         ];
+    }
+
+    public function type()
+    {
+        return data_get($this->authUser(), 'type') ?? "user";
     }
 
     public function teamId(): ?string
