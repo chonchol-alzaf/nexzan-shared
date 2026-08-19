@@ -1,0 +1,26 @@
+; Copy one program block per service and substitute SERVICE_PATH/SERVICE_NAME.
+; Run each consumed domain as a separate supervised process.
+
+[program:SERVICE_NAME-outbox]
+process_name=%(program_name)s
+command=php artisan outbox:work --batch=100 --sleep=3
+directory=SERVICE_PATH
+autostart=true
+autorestart=true
+stopasgroup=true
+killasgroup=true
+stopwaitsecs=30
+redirect_stderr=true
+stdout_logfile=SERVICE_PATH/storage/logs/outbox-worker.log
+
+[program:SERVICE_NAME-rabbitmq-DOMAIN]
+process_name=%(program_name)s
+command=php artisan consume:DOMAIN
+directory=SERVICE_PATH
+autostart=true
+autorestart=true
+stopasgroup=true
+killasgroup=true
+stopwaitsecs=30
+redirect_stderr=true
+stdout_logfile=SERVICE_PATH/storage/logs/rabbitmq-DOMAIN.log

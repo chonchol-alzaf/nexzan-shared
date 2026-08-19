@@ -1,202 +1,360 @@
 <?php
+
 namespace Nexzan\Shared\Infrastructure;
 
-use App\Jobs\RabbitMessageHandleJob;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
+use Nexzan\Shared\Enums\InboxStatus;
+use Nexzan\Shared\Exceptions\InvalidMessageEnvelope;
+use Nexzan\Shared\Messaging\DomainEventEnvelope;
+use Nexzan\Shared\Models\InboxEvent;
+use Nexzan\Shared\Models\OutboxEvent;
+use PhpAmqpLib\Channel\AMQPChannel;
 use PhpAmqpLib\Connection\AMQPStreamConnection;
-use PhpAmqpLib\Exception\AMQPTimeoutException;
 use PhpAmqpLib\Exchange\AMQPExchangeType;
 use PhpAmqpLib\Message\AMQPMessage;
 use PhpAmqpLib\Wire\AMQPTable;
+use RuntimeException;
+use Throwable;
 
 class RabbitMQService
 {
-    private function createConnection()
-    {
-        $connection = new AMQPStreamConnection(
-            config('rabbitmq.RABBITMQ_HOST'),
-            config('rabbitmq.RABBITMQ_PORT'),
-            config('rabbitmq.RABBITMQ_USER'),
-            config('rabbitmq.RABBITMQ_PASS'),
-            config('rabbitmq.RABBITMQ_VHOST', '/'),
+    /**
+     * Compatibility facade for existing producers. This records the event in
+     * the transactional Outbox; only OutboxPublisher talks to RabbitMQ.
+     */
+    public function recordOutboxEvent(
+        array $message,
+        string $routingKey,
+        string $exchange = 'topic_exchange',
+        ?string $aggregateType = null,
+        string|int|null $aggregateId = null,
+        ?int $aggregateVersion = null,
+    ): OutboxEvent {
+        return OutboxEvent::record(
+            eventType: $routingKey,
+            exchange: $exchange,
+            payload: $message,
+            aggregateType: $aggregateType,
+            aggregateId: $aggregateId,
+            aggregateVersion: $aggregateVersion,
         );
-        $channel = $connection->channel();
-
-        return [$connection, $channel];
     }
 
-    private function shutdown($channel, $connection)
-    {
-        $channel->close();
-        $connection->close();
-    }
-
-    public function publishDirect($message, string $exchange = 'test_exchange', string $routing_key = 'test_key', string $queue_name = 'test_queue'): void
-    {
+    public function publishEnvelope(
+        DomainEventEnvelope|array $envelope,
+        string $exchange,
+        ?string $routingKey = null,
+    ): void {
+        $envelope = DomainEventEnvelope::fromArray(
+            is_array($envelope) ? $envelope : $envelope->toArray()
+        );
+        $routingKey ??= $envelope->event;
         [$connection, $channel] = $this->createConnection();
+        $acknowledged = false;
+        $nacked = false;
+        $returned = null;
+        $originalException = null;
 
-        $channel->exchange_declare($exchange, AMQPExchangeType::DIRECT, false, false, false);
-        $channel->queue_declare($queue_name, false, false, false, false);
-        $channel->queue_bind($queue_name, $exchange, $routing_key);
+        try {
+            $channel->exchange_declare($exchange, AMQPExchangeType::TOPIC, false, true, false);
+            $channel->confirm_select();
+            $channel->set_ack_handler(function () use (&$acknowledged): void {
+                $acknowledged = true;
+            });
+            $channel->set_nack_handler(function () use (&$nacked): void {
+                $nacked = true;
+            });
+            $channel->set_return_listener(function (
+                int $replyCode,
+                string $replyText,
+                string $returnedExchange,
+                string $returnedRoutingKey,
+            ) use (&$returned): void {
+                $returned = "{$replyCode} {$replyText} ({$returnedExchange}:{$returnedRoutingKey})";
+            });
 
-        $msg = new AMQPMessage(json_encode($message));
-        $channel->basic_publish($msg, $exchange, $routing_key);
-        $this->shutdown($channel, $connection);
-    }
+            $body = json_encode($envelope->toArray(), JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES);
+            $message = new AMQPMessage($body, [
+                'content_type' => 'application/json',
+                'delivery_mode' => AMQPMessage::DELIVERY_MODE_PERSISTENT,
+                'message_id' => $envelope->eventId,
+                'type' => $envelope->event,
+                'timestamp' => time(),
+            ]);
 
-    public function consumeDireect(string $queue_name = 'test_queue', string $routing_key = ''): void
-    {
-        [$connection, $channel] = $this->createConnection();
+            $channel->basic_publish($message, $exchange, $routingKey, true);
+            $channel->wait_for_pending_acks_returns((float) config('rabbitmq.publisher_confirm_timeout', 5));
 
-        $callback = function ($msg) {
-            echo ' [x] Received ', json_decode($msg->body, true), "\n";
-        };
+            if ($returned !== null) {
+                throw new RuntimeException("RabbitMQ returned an unroutable message: {$returned}");
+            }
 
-        $channel->queue_declare($queue_name, false, false, false, false);
-
-        $channel->basic_consume($queue_name, '', false, true, false, false, $callback);
-
-        echo 'Waiting for new message on test_queue', " \n";
-        while ($channel->is_consuming()) {
-            $channel->wait();
+            if ($nacked || ! $acknowledged) {
+                throw new RuntimeException($nacked
+                    ? 'RabbitMQ negatively acknowledged the published message.'
+                    : 'RabbitMQ did not confirm the published message.');
+            }
+        } catch (Throwable $exception) {
+            $originalException = $exception;
+            throw $exception;
+        } finally {
+            $this->shutdown($channel, $connection, $originalException);
         }
-        $this->shutdown($channel, $connection);
     }
 
-    public function publishTopic($message, string $routing_key, string $exchange = 'topic_exchange'): void
-    {
+    public function consumeTopic(
+        string $queueName,
+        string $exchange,
+        array $exactBindings,
+    ): void {
+        $bindings = array_values(array_unique($exactBindings));
+
+        if ($bindings === [] || in_array('', $bindings, true)) {
+            throw new RuntimeException("RabbitMQ queue {$queueName} requires at least one non-empty binding.");
+        }
+
         [$connection, $channel] = $this->createConnection();
-        $channel->exchange_declare($exchange, AMQPExchangeType::TOPIC, false, true, false);
+        $originalException = null;
 
-        $payload = json_encode([
-            'event'       => $routing_key,
-            'event_id'    => Str::ulid(),
-            'version'     => 1,
-            'resource'    => $message,
-            'occurred_at' => now()->toIso8601String(),
-        ]);
+        try {
+            $this->declareConsumerTopology($channel, $exchange, $queueName, $bindings);
 
-        $msg = new AMQPMessage($payload, [
-            'content_type'        => 'application/json',
-            'delivery_mode'       => 2, // persistent
-            'application_headers' => new AMQPTable([
-                'retry_count' => 0,
-            ]),
-        ]);
-        $channel->basic_publish($msg, $exchange, $routing_key);
-        $this->shutdown($channel, $connection);
+            if (config('rabbitmq.declare_only', false)) {
+                Log::info('RabbitMQ consumer topology declared without consuming.', [
+                    'exchange' => $exchange,
+                    'queue' => $queueName,
+                    'bindings' => $bindings,
+                ]);
+
+                return;
+            }
+
+            $channel->basic_qos(null, (int) config('rabbitmq.prefetch_count', 10), null);
+            $channel->basic_consume(
+                $queueName,
+                '',
+                false,
+                false,
+                false,
+                false,
+                fn (AMQPMessage $message) => $this->handleDelivery($message, $exchange, $queueName),
+            );
+
+            Log::info('RabbitMQ reliable consumer started.', [
+                'exchange' => $exchange,
+                'queue' => $queueName,
+                'bindings' => $bindings,
+            ]);
+
+            while ($channel->is_consuming()) {
+                $channel->wait();
+            }
+        } catch (Throwable $exception) {
+            $originalException = $exception;
+            throw $exception;
+        } finally {
+            $this->shutdown($channel, $connection, $originalException);
+        }
     }
 
-    public function handleMethod($msg, $exchange, $queue): void
+    public function retryDeadLetters(
+        string $exchange,
+        string $queueName,
+        int $limit = 100,
+        bool $discardInvalid = false,
+    ): array {
+        [$connection, $channel] = $this->createConnection();
+        $retried = 0;
+        $discarded = 0;
+        $originalException = null;
+
+        try {
+            $deadQueue = "{$queueName}.dlq";
+            $channel->queue_declare($deadQueue, false, true, false, false);
+
+            for ($index = 0; $index < max(0, $limit); $index++) {
+                $message = $channel->basic_get($deadQueue, false);
+
+                if (! $message instanceof AMQPMessage) {
+                    break;
+                }
+
+                try {
+                    $envelope = DomainEventEnvelope::fromJson($message->getBody());
+                    $this->publishEnvelope($envelope, $exchange, $envelope->event);
+                    $message->ack();
+                    $retried++;
+                } catch (InvalidMessageEnvelope $exception) {
+                    if (! $discardInvalid) {
+                        $message->nack(true);
+                        break;
+                    }
+
+                    $message->reject(false);
+                    $discarded++;
+                } catch (Throwable $exception) {
+                    $message->nack(true);
+                    throw $exception;
+                }
+            }
+        } catch (Throwable $exception) {
+            $originalException = $exception;
+            throw $exception;
+        } finally {
+            $this->shutdown($channel, $connection, $originalException);
+        }
+
+        return compact('retried', 'discarded');
+    }
+
+    private function handleDelivery(AMQPMessage $message, string $exchange, string $queueName): void
     {
         try {
-            RabbitMessageHandleJob::dispatch(json_decode($msg->body, true), $exchange)
-                ->onQueue($queue);
-            $msg->ack();
-        } catch (\Throwable $e) {
-            Log::error($e);
-            $msg->nack(false, true);
+            $envelope = DomainEventEnvelope::fromJson($message->getBody());
+
+            if ($message->getRoutingKey() !== $envelope->event) {
+                throw new InvalidMessageEnvelope('Envelope event must match the AMQP routing key.');
+            }
+        } catch (InvalidMessageEnvelope $exception) {
+            Log::warning('Rejected invalid RabbitMQ message.', [
+                'exchange' => $exchange,
+                'queue' => $queueName,
+                'routing_key' => $message->getRoutingKey(),
+                'error' => $exception->getMessage(),
+            ]);
+            $message->reject(false);
+
+            return;
+        }
+
+        try {
+            $inboxEvent = DB::transaction(function () use ($envelope, $exchange, $queueName, $message): InboxEvent {
+                return InboxEvent::query()->firstOrCreate(
+                    ['event_id' => $envelope->eventId],
+                    [
+                        'event_type' => $envelope->event,
+                        'exchange' => $exchange,
+                        'routing_key' => $message->getRoutingKey(),
+                        'queue_name' => $queueName,
+                        'producer' => $envelope->producer,
+                        'aggregate_type' => $envelope->aggregateType,
+                        'aggregate_id' => $envelope->aggregateId,
+                        'aggregate_version' => $envelope->aggregateVersion,
+                        'payload' => $envelope->toArray(),
+                        'status' => InboxStatus::Pending,
+                    ],
+                );
+            });
+        } catch (Throwable $exception) {
+            Log::error('Could not persist RabbitMQ message to Inbox.', [
+                'event_id' => $envelope->eventId,
+                'event' => $envelope->event,
+                'queue' => $queueName,
+                'error' => $exception->getMessage(),
+            ]);
+            $message->nack(true);
+
+            return;
+        }
+
+        $message->ack();
+
+        if ($inboxEvent->status === InboxStatus::Completed) {
+            return;
+        }
+
+        try {
+            app(InboxEventDispatcher::class)->dispatch($inboxEvent);
+        } catch (Throwable $exception) {
+            Log::error('Inbox persisted but job dispatch failed; recovery will retry it.', [
+                'event_id' => $envelope->eventId,
+                'event' => $envelope->event,
+                'queue' => $queueName,
+                'error' => $exception->getMessage(),
+            ]);
         }
     }
 
-    public function consumeTopic(string $queue_name, string $routing_key_pattern, string $exchange = 'topic_exchange'): void
-    {
-        [$connection, $channel] = $this->createConnection();
+    private function declareConsumerTopology(
+        AMQPChannel $channel,
+        string $exchange,
+        string $queueName,
+        array $bindings,
+    ): void {
         $channel->exchange_declare($exchange, AMQPExchangeType::TOPIC, false, true, false);
-        $channel->queue_declare($queue_name, false, true, false, false);
-        $channel->queue_bind($queue_name, $exchange, $routing_key_pattern);
+        $arguments = [];
 
-        $channel->basic_consume($queue_name, '', false, false, false, false, function ($msg) use ($exchange, $queue_name) {
-            $this->handleMethod($msg, $exchange, $queue_name);
-        });
-
-        echo "Started {$queue_name} \n";
-        while ($channel->is_consuming()) {
-            try {
-                $channel->wait();
-            } catch (\PhpAmqpLib\Exception\AMQPBasicCancelException $e) {
-                Log::error('Consumer canceled: ' . $e->getMessage());
-            }
+        if (config('rabbitmq.enable_dlx', true)) {
+            $deadExchange = "{$exchange}.dlx";
+            $deadQueue = "{$queueName}.dlq";
+            $deadRoutingKey = "{$queueName}.dlq";
+            $channel->exchange_declare($deadExchange, AMQPExchangeType::DIRECT, false, true, false);
+            $channel->queue_declare($deadQueue, false, true, false, false);
+            $channel->queue_bind($deadQueue, $deadExchange, $deadRoutingKey);
+            $arguments = [
+                'x-dead-letter-exchange' => $deadExchange,
+                'x-dead-letter-routing-key' => $deadRoutingKey,
+            ];
         }
-        $this->shutdown($channel, $connection);
-    }
 
-    public function publishFanout(
-        $message,
-        string $exchange = 'fanout_exchange',
-    ): void {
-        [$connection, $channel] = $this->createConnection();
-        $channel->exchange_declare($exchange, AMQPExchangeType::FANOUT, false, true, false);
-        $msg = new AMQPMessage(json_encode($message));
-        $channel->basic_publish($msg, $exchange, '');
-        $this->shutdown($channel, $connection);
-    }
+        $channel->queue_declare(
+            $queueName,
+            false,
+            true,
+            false,
+            false,
+            false,
+            new AMQPTable($arguments),
+        );
 
-    public function consumeFanout(
-        string $exchange = 'fanout_exchange',
-        string $queue_name = 'fanout_queue'
-    ): void {
-        [$connection, $channel] = $this->createConnection();
-        $channel->exchange_declare($exchange, AMQPExchangeType::FANOUT, false, true, false);
-        $channel->queue_declare($queue_name, false, true, true, false);
-        $channel->queue_bind($queue_name, $exchange, '');
-
-        $callback = function ($msg) {
-            echo ' [x] Received ', json_decode($msg->body, true), "\n";
-        };
-
-        $channel->basic_consume($queue_name, '', false, false, false, false, $callback);
-
-        echo 'Waiting for new message on test_queue', " \n";
-        while ($channel->is_consuming()) {
-            $channel->wait();
+        foreach ($bindings as $binding) {
+            $channel->queue_bind($queueName, $exchange, $binding);
         }
-        $this->shutdown($channel, $connection);
     }
 
-    public function publishHeaders(array $headers, $message, string $exchange = 'header_exchange'): void
+    /** @return array{AMQPStreamConnection, AMQPChannel} */
+    private function createConnection(): array
     {
-        [$connection, $channel] = $this->createConnection();
-        $channel->exchange_declare($exchange, AMQPExchangeType::HEADERS, false, true, false);
-        $msg        = new AMQPMessage(json_encode($message));
-        $appHeaders = new AMQPTable(array_keys($headers));
-        $msg->set('application_headers', $appHeaders);
-        $channel->basic_publish($msg, $exchange, '');
-        $this->shutdown($channel, $connection);
+        $connection = new AMQPStreamConnection(
+            (string) config('rabbitmq.host', '127.0.0.1'),
+            (int) config('rabbitmq.port', 5672),
+            (string) config('rabbitmq.user', 'guest'),
+            (string) config('rabbitmq.password', 'guest'),
+            (string) config('rabbitmq.vhost', '/'),
+            false,
+            'AMQPLAIN',
+            null,
+            'en_US',
+            (float) config('rabbitmq.connection_timeout', 3),
+            (float) config('rabbitmq.read_write_timeout', 65),
+            null,
+            false,
+            (int) config('rabbitmq.heartbeat', 30),
+            (float) config('rabbitmq.channel_rpc_timeout', 5),
+        );
+
+        return [$connection, $connection->channel()];
     }
 
-    public function consumeHeaders(string $exchange = 'header_exchange'): void
+    private function shutdown(AMQPChannel $channel, AMQPStreamConnection $connection, ?Throwable $original): void
     {
-        [$connection, $channel] = $this->createConnection();
-        $channel->exchange_declare($exchange, AMQPExchangeType::HEADERS);
-        [$queue_name] = $channel->queue_declare('', false, false, true);
-
-        $bindArguments = [
-            'x-match'                   => 'any',
-            'notification-type-comment' => 'comment',
-            'notification-type-like'    => 'like',
-        ];
-
-        $channel->queue_bind($queue_name, $exchange, '', false, new AMQPTable($bindArguments));
-
-        $callback = function (AMQPMessage $message) {
-            echo PHP_EOL . ' [x] ', $message->getRoutingKey(), ':', $message->getBody(), "\n";
-            echo 'Message headers follows' . PHP_EOL;
-            var_dump($message->get('application_headers')->getNativeData());
-            echo PHP_EOL;
-        };
-
-        $channel->basic_consume($queue_name, '', false, true, true, false, $callback);
-
-        echo 'Waiting for new message on test_queue', " \n";
-        while ($channel->is_consuming()) {
-            try {
-                $channel->wait(null, false, 2);
-            } catch (AMQPTimeoutException $exception) {
+        try {
+            if ($channel->is_open()) {
+                $channel->close();
             }
-            echo '*' . PHP_EOL;
+
+            if ($connection->isConnected()) {
+                $connection->close();
+            }
+        } catch (Throwable $closeException) {
+            if ($original === null) {
+                throw $closeException;
+            }
+
+            Log::warning('RabbitMQ connection cleanup failed after another exception.', [
+                'error' => $closeException->getMessage(),
+            ]);
         }
-        $this->shutdown($channel, $connection);
     }
 }
