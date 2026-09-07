@@ -1,6 +1,18 @@
 ; Copy one program block per service and substitute SERVICE_PATH/SERVICE_NAME.
 ; Run each consumed domain as a separate supervised process.
 
+[program:SERVICE_NAME-operations]
+process_name=%(program_name)s
+command=php artisan operations:work --sleep=3
+directory=SERVICE_PATH
+autostart=true
+autorestart=true
+stopasgroup=true
+killasgroup=true
+stopwaitsecs=600
+redirect_stderr=true
+stdout_logfile=SERVICE_PATH/storage/logs/operations-worker.log
+
 [program:SERVICE_NAME-outbox]
 process_name=%(program_name)s
 command=php artisan outbox:work --batch=100 --sleep=3

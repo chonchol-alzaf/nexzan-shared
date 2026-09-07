@@ -6,19 +6,24 @@ use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\ServiceProvider;
 use Nexzan\Shared\Console\Commands\InboxRecoverCommand;
 use Nexzan\Shared\Console\Commands\InboxRetryDeadCommand;
+use Nexzan\Shared\Console\Commands\MessagingHealthCommand;
 use Nexzan\Shared\Console\Commands\Migration;
 use Nexzan\Shared\Console\Commands\MigrationFresh;
 use Nexzan\Shared\Console\Commands\MigrationRollback;
+use Nexzan\Shared\Console\Commands\OperationsReviewCommand;
+use Nexzan\Shared\Console\Commands\OperationsWorkCommand;
 use Nexzan\Shared\Console\Commands\OutboxRecoverCommand;
 use Nexzan\Shared\Console\Commands\OutboxRetryDeadCommand;
 use Nexzan\Shared\Console\Commands\OutboxWorkCommand;
 use Nexzan\Shared\Console\Commands\RabbitDlqRetryCommand;
+use Nexzan\Shared\Infrastructure\InboxExecutionContext;
 use Nexzan\Shared\Supports\AuthHelper;
 
 class NexzanSharedServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
+        $this->app->singleton(InboxExecutionContext::class);
         $this->mergeConfigFrom(__DIR__.'/../../config/nexzan-shared.php', 'nexzan-shared');
         $this->mergeConfigFrom(__DIR__.'/../../config/rabbitmq.php', 'rabbitmq');
 
@@ -62,6 +67,9 @@ class NexzanSharedServiceProvider extends ServiceProvider
                 OutboxRetryDeadCommand::class,
                 InboxRetryDeadCommand::class,
                 RabbitDlqRetryCommand::class,
+                OperationsWorkCommand::class,
+                OperationsReviewCommand::class,
+                MessagingHealthCommand::class,
             ]);
 
             // Register schedules

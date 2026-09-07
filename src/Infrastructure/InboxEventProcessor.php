@@ -36,7 +36,14 @@ class InboxEventProcessor
                     return;
                 }
 
-                $handler($inbox->payload, $inbox->exchange);
+                $context = app(InboxExecutionContext::class);
+                $previousEventId = $context->eventId;
+                $context->eventId = $inbox->event_id;
+                try {
+                    $handler($inbox->payload, $inbox->exchange);
+                } finally {
+                    $context->eventId = $previousEventId;
+                }
                 $this->rememberAggregateVersion($inbox);
                 $this->complete($inbox);
             });
@@ -92,6 +99,15 @@ class InboxEventProcessor
             return false;
         }
 
+        ConsumedAggregateVersion::query()->insertOrIgnore([
+            'stream_key' => $this->streamKey($inbox),
+            'producer' => $inbox->producer,
+            'aggregate_type' => $inbox->aggregate_type,
+            'aggregate_id' => $inbox->aggregate_id,
+            'last_version' => 0,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
         $version = ConsumedAggregateVersion::query()
             ->lockForUpdate()
             ->find($this->streamKey($inbox));
@@ -118,7 +134,8 @@ class InboxEventProcessor
 
     private function hasOrderedAggregate(InboxEvent $inbox): bool
     {
-        return $inbox->producer !== null
+        return in_array($inbox->event_type, config('rabbitmq.snapshot_events', []), true)
+            && $inbox->producer !== null
             && $inbox->aggregate_type !== null
             && $inbox->aggregate_id !== null
             && $inbox->aggregate_version !== null;
@@ -128,6 +145,7 @@ class InboxEventProcessor
     {
         return hash('sha256', implode('|', [
             $inbox->producer,
+            $inbox->event_type,
             $inbox->aggregate_type,
             $inbox->aggregate_id,
         ]));

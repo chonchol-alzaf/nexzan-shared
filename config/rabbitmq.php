@@ -1,6 +1,11 @@
 <?php
 
 return [
+    // Only replaceable snapshots may discard older versions, never commands/membership deltas.
+    'snapshot_events' => [
+        'project.updated', 'site.update', 'server.status_update', 'server.scaled',
+        'team.account_status.updated', 'team.billing_status.updated', 'team.grace_period.updated',
+    ],
     'producer' => env('RABBITMQ_PRODUCER', env('APP_NAME', 'nexzan-service')),
     'host' => env('RABBITMQ_HOST', '127.0.0.1'),
     'port' => (int) env('RABBITMQ_PORT', 5672),
