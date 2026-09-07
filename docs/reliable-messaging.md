@@ -68,7 +68,7 @@ Each service runs:
 - Horizon
 - Laravel scheduler
 - one `php artisan outbox:work --batch=100 --sleep=3`
-- one `php artisan operations:work --sleep=3` (required for Atom and Site Inbox side effects)
+- one `php artisan operations:work --sleep=3` (required for Atom, Billing and Site Inbox side effects)
 - one `php artisan consume:<domain>` process for every consumed domain
 
 Both recovery commands are registered every minute with `withoutOverlapping()->onOneServer()`:
@@ -104,7 +104,7 @@ Do not prune unresolved rows. Retention requires a separate reviewed policy.
 
 All audited Gateway, Atom, Billing, and Site RabbitMQ producers use the Outbox. Rabbit handlers receive only an Inbox primary ID, and `processed_events` is removed. Exact v2 bindings, publisher confirms, mandatory routing, DLQ handling, recovery, and monotonic aggregate stream versions remain stricter Nexzan safeguards on top of the Shope flow.
 
-Inbox-triggered Atom power-off, team cleanup and SSH-key removal, plus Site Git-key/hook cleanup, now use `durable_operations`. The record is unique by event ID and operation key and commits with Inbox/domain changes. `operations:work` claims one operation, commits the claim, then executes its locally constructed job outside the database transaction. Serialized job payloads are encrypted with the service APP_KEY; retain previous keys during rotation, and keep job classes backward compatible while rows remain unresolved.
+Inbox-triggered Atom power-off, team cleanup and SSH-key removal, Billing signup emails, and Site Git-key/hook cleanup now use `durable_operations`. The record is unique by event ID and operation key and commits with Inbox/domain changes. `operations:work` claims one operation, commits the claim, then executes its locally constructed job outside the database transaction. Serialized job payloads are encrypted with the service APP_KEY; retain previous keys during rotation, and keep job classes backward compatible while rows remain unresolved.
 
 Completed operations are never automatically repeated. External effects cannot share a MySQL transaction: exceptions go to `needs_review`, and an interrupted worker leaves `processing`. Neither state is automatically retried, because a remote request may already have succeeded. Alert on both failed and old processing rows. Stop the relevant worker, inspect provider/resource state, then resolve explicitly:
 
