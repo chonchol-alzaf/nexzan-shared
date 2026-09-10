@@ -30,7 +30,7 @@ class InboxRecoverCommand extends Command
             ->where(function ($query) use ($staleBefore): void {
                 $query->where('status', InboxStatus::Pending->value)
                     ->orWhere(function ($query): void {
-                        $query->where('status', InboxStatus::Failed->value)
+                        $query->whereIn('status', [InboxStatus::Failed->value, InboxStatus::Waiting->value])
                             ->where(function ($query): void {
                                 $query->whereNull('available_at')->orWhere('available_at', '<=', now());
                             });

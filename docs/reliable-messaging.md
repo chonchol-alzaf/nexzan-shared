@@ -21,7 +21,7 @@ Producers call `OutboxEvent::record()` or the `recordOutboxEvent()` compatibilit
 - `event`, `event_id`, `version`, `resource`, `occurred_at`, `producer`
 - `aggregate_type`, `aggregate_id`, and `aggregate_version` for ordered aggregate streams
 
-When an aggregate type and ID are supplied, the shared package allocates a monotonic version under a database row lock in the same transaction. Consumers discard older versions only for the replaceable snapshot events in `rabbitmq.snapshot_events`. The consumer version key includes producer, event type, aggregate type and ID; an account-status snapshot cannot suppress a billing-status snapshot. Commands and membership deltas always process independently. This is not a guarantee of strict ordering across event types.
+When an aggregate type and ID are supplied, the shared package allocates a monotonic version under a database row lock in the same transaction. Consumers discard older or equal versions only for the replaceable snapshot events in `rabbitmq.snapshot_events`. The consumer version key includes producer, snapshot group (event type by default), aggregate type and ID. `rabbitmq.snapshot_event_groups` groups `site.ready` with `site.update`, and `project.created` with `project.updated`, because each pair writes the same details. They reuse the existing `site.update` and `project.updated` keys, so already consumed update versions remain effective without a schema migration. Team account, billing and grace snapshots keep separate keys; one cannot suppress another. Commands and membership deltas always process independently. This is not a guarantee of strict ordering across event types.
 
 `publishEnvelope()` uses persistent messages, `mandatory=true`, publisher confirms, and throws on returns, NACKs, missing confirms, and timeout. It is infrastructure-only and is called by the Outbox publisher (plus the inspected DLQ replay command), not by application producers.
 
@@ -78,6 +78,8 @@ php artisan outbox:recover
 php artisan inbox:recover --batch=100
 ```
 
+Handlers throw `MessageDependencyNotReady` when a valid event arrives before its required team, user, or billable server purchase. The entire handler transaction rolls back and the Inbox becomes `waiting`, with a default 30-second delay (`RABBITMQ_INBOX_DEPENDENCY_BACKOFF`). Waiting does not consume the normal failure-attempt budget. `inbox:recover` dispatches due waiting rows; duplicate Rabbit deliveries respect the same delay. Missing dependencies are not marked completed or silently dropped. Monitor their unresolved age with `messaging:health`; a dependency that never arrives remains visible for investigation. Other exceptions continue through failed/backoff/dead handling.
+
 Dead rows are never pruned automatically. Inspect the payload, error, handler state, and downstream effects before retrying:
 
 ```shell
@@ -93,6 +95,7 @@ php artisan rabbitmq:dlq:retry <exchange> <base-queue> --limit=100
 Alert on:
 
 - oldest pending/failed/dead Outbox and Inbox age
+- oldest waiting Inbox age and its dependency error
 - counts by Outbox/Inbox status and retry attempts
 - broker queue depth, unacked messages, DLQ depth, publisher returns/NACKs, and consumer count
 - stale publishing/queued/processing leases
@@ -128,3 +131,55 @@ php nexzan-shared/tests/integration/smoke.php /absolute/path/to/atom-service-api
 ```
 
 Verified on 2026-09-07 with MySQL 8.0.46, RabbitMQ 3.12.1, Redis and Laravel 12.64.0 / 13.22.0: package migrations, producer rollback, mandatory confirmed delivery, broker duplicate deduplication, concurrent Horizon database effects, durable operation execution, invalid-envelope DLQ, DB-outage requeue, and unroutable publisher backoff. Production bindings export, legacy backlog drain, migrations and process activation remain deployment steps and must be done only for an approved release.
+
+## Messaging contract corrections (2026-09-10)
+
+- Site publishes `resource.site.site_name` for both readiness and updates, including renames. Gateway stores `sites.site_name` and returns `site_name` in project detail responses. Gateway migration `2026_09_10_000001_rename_site_domain_to_site_name.php` preserves existing values while renaming the column; consumers of the GET response must use the new key.
+- Team primary keys are `teams.id`; `team_id` remains the foreign key on related records. Creation handlers initialize missing teams without resetting later account, billing or grace snapshots. Status handlers wait for missing teams instead of completing an update that affected no rows.
+- Versioned site readiness/update messages share a snapshot group in Gateway and Atom; project creation/update messages share another group in Atom. A late readiness/creation message cannot overwrite details from a newer update. The group version advances in the same transaction as the successful handler; failures do not prevent an earlier valid event or the later retry from applying. Separate producers remain independent.
+- Billing schedules `billing:request-suspended-resource-cleanup` every ten minutes. A team becomes eligible after `DELETE_RESOURCES_AFTER_SUSPEND_DAYS` (default 14) of billing suspension, provided it has no active grace period. The request creates a durable Atom operation, executed by `operations:work`. Successful local server/volume removal records `server.deleted`/`volume.deleted` in the same transaction. Outbox failure rolls the local removal back; confirmed external effects still require the durable-operation review process after an interruption.
+- All Atom server deletion paths include `provider`, `billing_started_at` and `deleted_at`. Billing completes custom-server deletion without a purchase. Managed deletion waits for a missing billable purchase; an already closed purchase or an explicitly never-billed server is a no-op. Volume deletion includes `resource.volume.deleted_at` for the billing cutoff.
+- Billing volume deletion locks the matching active purchase by team, volume ID and item type, and closes it at `resource.volume.deleted_at` (legacy fallback: envelope `occurred_at`). It preserves existing inactive/removed purchases and their cutoffs, including trial finalization. A missing purchase enters dependency waiting without exhausting retries; `inbox:recover` redispatches it after creation. Older scaling history cannot hide a current active purchase. A missing timestamp is a payload failure rather than a guessed billing cutoff.
+- Versioned billing uses `resource.billing_transition.effective_at`. Atom retains `resource.server.completed_at` for compatible non-billing consumers. Legacy scaling receipts without authoritative sequence facts enter durable history recovery; they never substitute message-consumption time for the historical cutoff.
+- GitHub hook cleanup requires HTTP 204, or a 404 followed by a successful complete hook listing proving that the hook is absent. A 404 alone can hide insufficient permissions (see [GitHub troubleshooting](https://docs.github.com/en/rest/using-the-rest-api/troubleshooting-the-rest-api)). Other failures and missing source-control credentials leave the operation in `needs_review`; they do not claim remote success or automatically repeat a potentially successful deletion.
+
+### Server and site deletion retention
+
+Gateway, Atom and Site retain deleted server/site records in their original tables using `deleted_at`. Normal queries in Gateway and Site, and site queries in Atom, exclude these rows. Atom servers keep their existing `status = removed` / `deleted_at` lifecycle and `notDeleted` scope. This change does not add retention to projects, volumes or Billing purchase history.
+
+Deletion handlers preserve the original deletion time from the event, falling back to envelope `occurred_at` for older site events. Repeated deletion messages do not reset the retention date. Server deletion also soft-deletes its sites. Domain changes and the completed Inbox receipt commit together; source deletion and its Outbox event retain their existing transaction boundary.
+
+All three services schedule the shared command daily at midnight in the application's timezone:
+
+```shell
+php artisan resources:purge-deleted --dry-run
+php artisan resources:purge-deleted --batch=500
+```
+
+The command permanently removes rows whose `deleted_at` is at least six calendar months old, in batches, with sites processed before servers. Rows become eligible at the six-month cutoff and are removed by the next successful daily run. Purging bypasses model observers: it does not repeat provider cleanup, publish another deletion, or change the billing cutoff. The six months concern database row retention; physical server cleanup and deletion-based billing closure happen at the original resource deletion, independently of this purge.
+
+Before applying a resource message, the shared Inbox processor locks the resource lifecycle (parent server first for site writes) and checks for deletion. A late create/ready/update for a deleted ID completes without recreating or changing the resource. After row purge, the existing completed Inbox deletion receipt or source Outbox deletion event provides the same protection. **Keep these deletion events in the existing delivery ledgers, including after six months.** Removing both the resource row and its deletion receipts would remove this protection. No additional tombstone table is created; lifecycle mutexes use the existing `consumed_aggregate_versions` table. Deleted IDs are terminal and must not be reused for a new resource.
+
+Apply these migrations before enabling the changed models and resource-message configuration:
+
+- Gateway: `2026_09_10_000002_add_soft_deletes_to_resource_projections.php` (after the site-name rename).
+- Atom: `2026_09_10_000001_add_site_soft_deletes_and_server_retention_index.php`.
+- Site: `2026_09_10_000001_add_soft_deletes_to_servers_and_sites.php`.
+
+These migrations add nullable columns/indexes and retain existing data. They do not run the purge. The scheduler and current shared package must be installed for automatic purging; cached configuration and long-running workers must be refreshed as part of deployment.
+
+`tests/integration/resource-retention.php` verifies real MySQL concurrent child deletion versus late readiness, source server deletion versus child creation, and post-purge protection using the Outbox receipt. It uses two PHP processes and waits for observed InnoDB lock contention. Run it only against a disposable socket (no RabbitMQ or provider access):
+
+```shell
+php nexzan-shared/tests/integration/resource-retention.php /absolute/path/to/gateway-service-api /tmp/nexzan-messaging-integration.RUN/mysql.sock
+```
+
+Service regression tests build isolated SQLite schemas. Bypass any local cached configuration with `APP_CONFIG_CACHE=/tmp/nexzan-no-cached-config.php` so the new resource maps are exercised. The Site unit fixtures use a connection named `mysql` configured as SQLite in memory; use `DB_CONNECTION=mysql` for that suite.
+
+### Shared release v1.1.0
+
+v1.1.0 contains dependency waiting/recovery, shared site/project snapshot groups, the resource-deletion guard and six-month purge command, and `Messaging\BillingTransition` for versioned billing facts/fingerprints and fractional interval hours. `server.scaled` is no longer a snapshot event: a later scale cannot suppress an earlier billable interval. Billing lifecycle sequence and Outbox aggregate version are independent. Source histories, consumer reconciliation and financial readiness checks live in the Atom/Billing services, not in this transport package.
+
+All four services must pin and install the actual v1.1.0 tag through Composer; manually copying source into vendor is not a release. Stop consumers/Horizon/operation workers for a coordinated application update, apply the service migrations before activation, rebuild cached configuration and restart every long-running worker. The `waiting` status uses the existing string Inbox column and requires no extra shared schema migration. Keep the scheduler running for Inbox/history recovery and retention purging.
+
+The full billing transition contract, source checkpoint endpoint, legacy-baseline policy and payment/bonus safeguards are documented in Billing's `docs/scaling-event-ordering.md`. The scaling timestamp for the new contract is `resource.billing_transition.effective_at`; the older server completion fields remain in publisher payloads for other consumers. Unsequenced scaling receipts request history recovery instead of guessing predecessor/price facts.

@@ -12,6 +12,11 @@ class InboxEventDispatcher
     {
         $inboxEvent->refresh();
 
+        if (in_array($inboxEvent->status, [InboxStatus::Failed, InboxStatus::Waiting], true)
+            && $inboxEvent->available_at?->isFuture()) {
+            return;
+        }
+
         if (in_array($inboxEvent->status, [
             InboxStatus::Queued,
             InboxStatus::Processing,
@@ -31,7 +36,7 @@ class InboxEventDispatcher
 
         InboxEvent::query()
             ->whereKey($inboxEvent->getKey())
-            ->whereIn('status', [InboxStatus::Pending->value, InboxStatus::Failed->value])
+            ->whereIn('status', [InboxStatus::Pending->value, InboxStatus::Failed->value, InboxStatus::Waiting->value])
             ->update([
                 'status' => InboxStatus::Queued->value,
                 'dispatched_at' => now(),

@@ -4,6 +4,7 @@ namespace Nexzan\Shared\Infrastructure;
 
 use Illuminate\Support\Facades\DB;
 use Nexzan\Shared\Enums\InboxStatus;
+use Nexzan\Shared\Exceptions\MessageDependencyNotReady;
 use Nexzan\Shared\Models\ConsumedAggregateVersion;
 use Nexzan\Shared\Models\InboxEvent;
 use Throwable;
@@ -30,7 +31,7 @@ class InboxEventProcessor
                     'last_error' => null,
                 ])->save();
 
-                if ($this->isStaleAggregateVersion($inbox)) {
+                if (app(ResourceDeletionGuard::class)->shouldSkip($inbox) || $this->isStaleAggregateVersion($inbox)) {
                     $this->complete($inbox);
 
                     return;
@@ -53,6 +54,11 @@ class InboxEventProcessor
             }
 
             $this->recordFailure($inboxEventId, $exception);
+
+            if ($exception instanceof MessageDependencyNotReady) {
+                return;
+            }
+
             throw $exception;
         }
     }
@@ -75,6 +81,17 @@ class InboxEventProcessor
             $inbox = InboxEvent::query()->lockForUpdate()->find($inboxEventId);
 
             if (! $inbox || in_array($inbox->status, [InboxStatus::Completed, InboxStatus::Dead], true)) {
+                return;
+            }
+
+            if ($exception instanceof MessageDependencyNotReady) {
+                $inbox->forceFill([
+                    'status' => InboxStatus::Waiting,
+                    'available_at' => now()->addSeconds(max(1, (int) config('rabbitmq.inbox_dependency_backoff', 30))),
+                    'processing_started_at' => null,
+                    'last_error' => mb_substr($exception->getMessage(), 0, 4000),
+                ])->save();
+
                 return;
             }
 
@@ -143,9 +160,12 @@ class InboxEventProcessor
 
     private function streamKey(InboxEvent $inbox): string
     {
+        // Event names contain dots; access the complete map without dot traversal.
+        $group = config('rabbitmq.snapshot_event_groups', [])[$inbox->event_type] ?? $inbox->event_type;
+
         return hash('sha256', implode('|', [
             $inbox->producer,
-            $inbox->event_type,
+            $group,
             $inbox->aggregate_type,
             $inbox->aggregate_id,
         ]));

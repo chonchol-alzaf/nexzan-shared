@@ -15,6 +15,7 @@ use Nexzan\Shared\Console\Commands\OperationsWorkCommand;
 use Nexzan\Shared\Console\Commands\OutboxRecoverCommand;
 use Nexzan\Shared\Console\Commands\OutboxRetryDeadCommand;
 use Nexzan\Shared\Console\Commands\OutboxWorkCommand;
+use Nexzan\Shared\Console\Commands\PurgeDeletedResourcesCommand;
 use Nexzan\Shared\Console\Commands\RabbitDlqRetryCommand;
 use Nexzan\Shared\Infrastructure\InboxExecutionContext;
 use Nexzan\Shared\Supports\AuthHelper;
@@ -70,6 +71,7 @@ class NexzanSharedServiceProvider extends ServiceProvider
                 OperationsWorkCommand::class,
                 OperationsReviewCommand::class,
                 MessagingHealthCommand::class,
+                PurgeDeletedResourcesCommand::class,
             ]);
 
             // Register schedules
