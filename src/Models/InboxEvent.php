@@ -29,6 +29,7 @@ class InboxEvent extends Model
         'attempts',
         'available_at',
         'dispatched_at',
+        'dispatch_token',
         'processing_started_at',
         'processed_at',
         'last_error',

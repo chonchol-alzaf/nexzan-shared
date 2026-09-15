@@ -11,16 +11,18 @@ use Throwable;
 
 class InboxEventProcessor
 {
-    public function process(string $inboxEventId, callable $handler): void
+    public function process(string $inboxEventId, callable $handler, ?string $dispatchToken = null): void
     {
         $initialTransactionLevel = DB::transactionLevel();
 
         try {
-            DB::transaction(function () use ($inboxEventId, $handler): void {
+            DB::transaction(function () use ($inboxEventId, $handler, $dispatchToken): void {
                 /** @var InboxEvent $inbox */
                 $inbox = InboxEvent::query()->lockForUpdate()->findOrFail($inboxEventId);
 
-                if (in_array($inbox->status, [InboxStatus::Completed, InboxStatus::Dead], true)) {
+                if ($inbox->dispatch_token !== $dispatchToken
+                    || ($dispatchToken !== null && $inbox->status !== InboxStatus::Queued)
+                    || in_array($inbox->status, [InboxStatus::Completed, InboxStatus::Dead], true)) {
                     return;
                 }
 
@@ -39,11 +41,14 @@ class InboxEventProcessor
 
                 $context = app(InboxExecutionContext::class);
                 $previousEventId = $context->eventId;
+                $previousInbox = $context->inbox;
+                $context->inbox = $inbox;
                 $context->eventId = $inbox->event_id;
                 try {
                     $handler($inbox->payload, $inbox->exchange);
                 } finally {
                     $context->eventId = $previousEventId;
+                    $context->inbox = $previousInbox;
                 }
                 $this->rememberAggregateVersion($inbox);
                 $this->complete($inbox);
@@ -53,7 +58,7 @@ class InboxEventProcessor
                 DB::rollBack();
             }
 
-            $this->recordFailure($inboxEventId, $exception);
+            $this->recordFailure($inboxEventId, $exception, $dispatchToken);
 
             if ($exception instanceof MessageDependencyNotReady) {
                 return;
@@ -74,13 +79,15 @@ class InboxEventProcessor
         ])->save();
     }
 
-    private function recordFailure(string $inboxEventId, Throwable $exception): void
+    private function recordFailure(string $inboxEventId, Throwable $exception, ?string $dispatchToken): void
     {
-        DB::transaction(function () use ($inboxEventId, $exception): void {
+        DB::transaction(function () use ($inboxEventId, $exception, $dispatchToken): void {
             /** @var InboxEvent|null $inbox */
             $inbox = InboxEvent::query()->lockForUpdate()->find($inboxEventId);
 
-            if (! $inbox || in_array($inbox->status, [InboxStatus::Completed, InboxStatus::Dead], true)) {
+            if (! $inbox || $inbox->dispatch_token !== $dispatchToken
+                || ($dispatchToken !== null && $inbox->status !== InboxStatus::Queued)
+                || in_array($inbox->status, [InboxStatus::Completed, InboxStatus::Dead], true)) {
                 return;
             }
 

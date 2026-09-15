@@ -3,7 +3,6 @@
 namespace Nexzan\Shared\Console\Commands;
 
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\DB;
 use Nexzan\Shared\Enums\InboxStatus;
 use Nexzan\Shared\Infrastructure\InboxEventDispatcher;
 use Nexzan\Shared\Models\InboxEvent;
@@ -51,25 +50,9 @@ class InboxRecoverCommand extends Command
         $dispatched = 0;
 
         foreach ($ids as $id) {
-            $event = DB::transaction(function () use ($id): ?InboxEvent {
-                $event = InboxEvent::query()->lockForUpdate()->find($id);
-
-                if (! $event || in_array($event->status, [InboxStatus::Completed, InboxStatus::Dead], true)) {
-                    return null;
-                }
-
-                $event->forceFill([
-                    'status' => InboxStatus::Pending,
-                    'available_at' => null,
-                    'dispatched_at' => null,
-                    'processing_started_at' => null,
-                ])->save();
-
-                return $event;
-            }, 3);
-
-            if ($event) {
-                $dispatcher->dispatch($event);
+            // Selection is advisory: dispatch rechecks eligibility while holding the row lock.
+            $event = InboxEvent::find($id);
+            if ($event && $dispatcher->dispatch($event, recoverStale: true)) {
                 $dispatched++;
             }
         }
