@@ -35,6 +35,7 @@ return [
     'outbox_stale_minutes' => (int) env('RABBITMQ_OUTBOX_STALE_MINUTES', 5),
     'inbox_stale_minutes' => (int) env('RABBITMQ_INBOX_STALE_MINUTES', 5),
     'inbox_dependency_backoff' => (int) env('RABBITMQ_INBOX_DEPENDENCY_BACKOFF', 30),
+    'operations_dependency_backoff' => (int) env('RABBITMQ_OPERATIONS_DEPENDENCY_BACKOFF', 30),
     'outbox_backoff' => [10, 30, 60, 120, 300, 600],
     'inbox_backoff' => [10, 30, 60, 120, 300, 600],
     'inbox_job' => env('RABBITMQ_INBOX_JOB', 'App\\Jobs\\RabbitMessageHandleJob'),

@@ -4,5 +4,5 @@ namespace Nexzan\Shared\Exceptions;
 
 use RuntimeException;
 
-/** The message is valid, but an earlier event has not created its local dependency yet. */
+/** A valid operation is waiting for a dependency. Never use after an uncertain external effect. */
 class MessageDependencyNotReady extends RuntimeException {}

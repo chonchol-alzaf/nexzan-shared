@@ -3,6 +3,7 @@
 namespace Nexzan\Shared\Infrastructure;
 
 use Illuminate\Support\Facades\DB;
+use Nexzan\Shared\Exceptions\MessageDependencyNotReady;
 use Nexzan\Shared\Models\DurableOperation;
 use RuntimeException;
 use Throwable;
@@ -13,9 +14,10 @@ class DurableOperationProcessor
     {
         $operation = DB::transaction(function () {
             $operation = DurableOperation::query()->where('status', 'pending')
+                ->where(fn ($query) => $query->whereNull('next_attempt_at')->orWhere('next_attempt_at', '<=', now()))
                 ->oldest('id')->lockForUpdate()->first();
             if ($operation) {
-                $operation->update(['status' => 'processing', 'started_at' => now(),
+                $operation->update(['status' => 'processing', 'started_at' => now(), 'next_attempt_at' => null,
                     'attempts' => $operation->attempts + 1]);
             }
 
@@ -33,6 +35,12 @@ class DurableOperationProcessor
             }
             app()->call([$job, 'handle']);
             $operation->update(['status' => 'completed', 'completed_at' => now(), 'last_error' => null]);
+        } catch (MessageDependencyNotReady $exception) {
+            // Only explicit, safely retryable dependency failures use this path.
+            // Uncertain external outcomes still require inspection below.
+            $operation->update(['status' => 'pending', 'started_at' => null,
+                'next_attempt_at' => now()->addSeconds(max(1, (int) config('rabbitmq.operations_dependency_backoff', 30))),
+                'last_error' => mb_substr($exception->getMessage(), 0, 4000)]);
         } catch (Throwable $exception) {
             // A remote effect may have succeeded before an exception. Never blindly replay it.
             $operation->update(['status' => 'needs_review', 'last_error' => mb_substr($exception->getMessage(), 0, 4000)]);

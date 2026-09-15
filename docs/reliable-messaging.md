@@ -200,6 +200,12 @@ Declare Gateway with `php artisan consume:server --declare-only` before restarti
 Regression harness: `php tests/integration/inbox-claims.php /absolute/gateway-service-api /tmp/nexzan-messaging-integration.RUN/mysql.sock`. It creates/drops its own MySQL database, observes real InnoDB lock waits, and verifies claim fencing, outer-commit enqueue, stale recovery, fast dependency waiting and field-version bootstrap under REPEATABLE READ. It never connects to a service database.
 
 
+## v1.1.3: safe durable-operation dependency retry
+
+Apply `2026_09_15_000003_add_durable_operation_retry_time` in every service before starting v1.1.3 workers. `MessageDependencyNotReady` from a durable operation now returns it to pending with `next_attempt_at` (default 30 seconds, `RABBITMQ_OPERATIONS_DEPENDENCY_BACKOFF`). The worker skips pending operations until due. Other exceptions still go to `needs_review`; inspect uncertain external effects before retrying. Throw the dependency exception only when retry is safe, such as an unavailable authorization service before a provider call. Already completed resource steps must remain idempotent across a deferred batch.
+
+Atom's suspension cleanup uses Billing request identities and per-resource execution claims. Billing cancellation and claims share a Team transaction lock; Site waits for confirmed `server.deleted`. Upgrade Billing schema/producer/authorization endpoint and Atom/Site handlers together. Old jobs without request IDs require review and cannot delete resources. Do not replay them with an invented identity; a fresh eligible Billing request is required.
+
 ## v1.1.2: publisher ownership and membership/project ordering
 
 Apply shared migration `2026_09_15_000002_add_outbox_publish_token` in all four services and service migration `2026_09_15_000003_add_project_soft_deletes` in Atom/Gateway before restarting workers. Install the real v1.1.2 tag, refresh config and restart long-running processes together. Old publisher processes must be stopped: they cannot enforce the new ownership condition.

@@ -17,7 +17,7 @@ class DurableOperation extends Model
 
     protected function casts(): array
     {
-        return ['job_payload' => 'encrypted', 'started_at' => 'datetime'];
+        return ['job_payload' => 'encrypted', 'started_at' => 'datetime', 'next_attempt_at' => 'datetime'];
     }
 
     /** Only application-created jobs are stored; never accept serialized broker input. */
