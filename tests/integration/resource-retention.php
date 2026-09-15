@@ -8,6 +8,7 @@ use App\Models\Site;
 use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Nexzan\Shared\Enums\InboxStatus;
 use Nexzan\Shared\Infrastructure\InboxEventProcessor;
@@ -25,7 +26,15 @@ if (! preg_match('/^nxret_[0-9_]+$/', $database)) {
 }
 putenv('APP_CONFIG_CACHE='.dirname($socket).'/absent-config.php');
 putenv('APP_ENV=testing');
-require $service.'/vendor/autoload.php';
+$loader = require $service.'/vendor/autoload.php';
+$shared = dirname(__DIR__, 2);
+$classes = [];
+foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($shared.'/src')) as $file) {
+    if ($file->getExtension() === 'php') {
+        $classes['Nexzan\\Shared\\'.str_replace('/', '\\', substr($file->getPathname(), strlen($shared.'/src/'), -4))] = $file->getPathname();
+    }
+}
+$loader->addClassMap($classes);
 $app = require $service.'/bootstrap/app.php';
 $app->make(Kernel::class)->bootstrap();
 set_exception_handler(function (Throwable $exception): void {
@@ -78,10 +87,11 @@ $pdo = new PDO('mysql:unix_socket='.$socket, 'root', '');
 $pdo->exec('CREATE DATABASE `'.$database.'`');
 $workers = [];
 try {
-    foreach (glob($service.'/vendor/nexzan/shared/database/migrations/*.php') as $migration) {
+    foreach (glob($shared.'/database/migrations/*.php') as $migration) {
         (require $migration)->up();
     }
-    foreach (['2024_10_14_124512_create_servers_table.php', '2024_12_02_211805_create_sites_table.php',
+    Schema::create('teams', fn ($table) => $table->unsignedBigInteger('id')->primary());
+    foreach (['2025_09_21_090902_create_projects_table.php', '2026_09_15_000003_add_project_soft_deletes.php', '2024_10_14_124512_create_servers_table.php', '2024_12_02_211805_create_sites_table.php',
         '2026_09_10_000001_rename_site_domain_to_site_name.php',
         '2026_09_10_000002_add_soft_deletes_to_resource_projections.php'] as $migration) {
         (require $service.'/database/migrations/'.$migration)->up();

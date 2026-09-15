@@ -10,6 +10,22 @@ use Nexzan\Shared\Models\InboxEvent;
 /** Apply independently ordered fields inside the resource's Inbox transaction. */
 class FieldVersionProjection
 {
+    /** A nested snapshot has its own sequence, independent of the envelope aggregate. */
+    public function applySnapshot(string $producer, string $group, string $type, string $id, int $sequence, callable $apply): bool
+    {
+        if ($producer === '' || $sequence < 1) {
+            throw new LogicException('A nested snapshot requires a producer and positive sequence.');
+        }
+        $version = $this->lock($producer, $group, $type, $id);
+        if ($sequence <= $version->last_version) {
+            return false;
+        }
+        $apply();
+        $version->update(['last_version' => $sequence]);
+
+        return true;
+    }
+
     public function apply(string $group, string $type, string $id, callable $apply, array $historyEvents = []): bool
     {
         $inbox = app(InboxExecutionContext::class)->inbox;

@@ -23,6 +23,7 @@ class OutboxRecoverCommand extends Command
             ->where('attempts', '>=', $maximum)
             ->update([
                 'status' => OutboxStatus::Dead->value,
+                'publish_token' => null,
                 'publishing_started_at' => null,
                 'next_attempt_at' => null,
                 'last_error' => 'Recovered stale publishing lease after maximum attempts.',
@@ -34,6 +35,7 @@ class OutboxRecoverCommand extends Command
             ->where('attempts', '<', $maximum)
             ->update([
                 'status' => OutboxStatus::Failed->value,
+                'publish_token' => null,
                 'publishing_started_at' => null,
                 'next_attempt_at' => now(),
                 'last_error' => 'Recovered stale publishing lease; publish outcome was unknown.',

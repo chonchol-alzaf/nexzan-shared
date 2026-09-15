@@ -22,6 +22,7 @@ class OutboxRetryDeadCommand extends Command
                 'attempts' => 0,
                 'next_attempt_at' => null,
                 'publishing_started_at' => null,
+                'publish_token' => null,
                 'last_error' => null,
             ]);
 

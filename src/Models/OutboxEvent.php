@@ -31,6 +31,7 @@ class OutboxEvent extends Model
         'attempts',
         'next_attempt_at',
         'publishing_started_at',
+        'publish_token',
         'published_at',
         'last_error',
     ];

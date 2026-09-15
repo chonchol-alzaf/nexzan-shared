@@ -10,6 +10,13 @@ use Nexzan\Shared\Models\OutboxEvent;
 
 class ResourceDeletionGuard
 {
+    public function isDeleted(string $type, string $id): bool
+    {
+        $this->lock($type, $id);
+
+        return $this->wasDeleted($type, $id);
+    }
+
     /** Called inside the Inbox transaction, before any resource mutation. */
     public function shouldSkip(InboxEvent $inbox): bool
     {
@@ -89,7 +96,7 @@ class ResourceDeletionGuard
                 })->orWhere(function ($query) use ($id, $path): void {
                     $query->whereNull('aggregate_id')->where('payload->'.$path, $id);
                 });
-            })->exists();
+            })->lockForUpdate()->first(['id']) !== null;
         if ($received) {
             return true;
         }
@@ -104,6 +111,6 @@ class ResourceDeletionGuard
                 })->orWhere(function ($query) use ($id, $outboxPath): void {
                     $query->whereNull('aggregate_id')->where('payload->'.$outboxPath, $id);
                 });
-            })->exists();
+            })->lockForUpdate()->first(['id']) !== null;
     }
 }
